@@ -64,28 +64,64 @@ export function isExerciseQuestion(message: string): boolean {
   return /exercise|stretch|strengthen|sit up straight|desk routine|what can i do|help me sit|posture drill|workout|mobility/i.test(message);
 }
 
-function deskExercisesFor(issue: string | null): [string, string, string] {
+export const IMESSAGE_MAX_CHARS = 320;
+
+export function mentionsCommandMenu(text: string): boolean {
+  const lower = text.toLowerCase();
+  if (/try (stats|snooze|why|stop)|text stats|when you need quick|what you can text|command menu|only options/i.test(lower)) return true;
+  const hits = ["stats", "snooze", " why", "stop"].filter((token) => lower.includes(token.trim()));
+  return hits.length >= 2;
+}
+
+export function clampCoachReply(text: string, allowLong = false): string {
+  const trimmed = text.replace(/\n{3,}/g, "\n\n").trim();
+  if (!trimmed) return "";
+  if (!allowLong && mentionsCommandMenu(trimmed)) return "";
+  if (allowLong || trimmed.length <= IMESSAGE_MAX_CHARS) return trimmed;
+  const maxBody = IMESSAGE_MAX_CHARS - 1;
+  const cut = trimmed.slice(0, maxBody);
+  const boundary = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "), cut.lastIndexOf("\n"));
+  if (boundary > 80) return cut.slice(0, boundary + 1).trim();
+  return `${cut.trim()}…`.slice(0, IMESSAGE_MAX_CHARS);
+}
+
+export function finalizeCoachReply(answer: string, options: { allowLong?: boolean; allowCommands?: boolean } = {}): string {
+  if (options.allowCommands) return clampCoachReply(answer, true);
+  if (mentionsCommandMenu(answer)) return "I'm here — tell me what's feeling tight or slouchy.";
+  const clamped = clampCoachReply(answer, options.allowLong);
+  return clamped || "I'm here — tell me what's feeling tight or slouchy.";
+}
+
+export function isGreeting(message: string): boolean {
+  return /^(hi|hey|hello|yo|sup|good (morning|afternoon|evening))[\s!.?]*$/i.test(message.trim());
+}
+
+export function isThanks(message: string): boolean {
+  return /^(thanks|thank you|thx|ty|appreciate it)[\s!.?]*$/i.test(message.trim());
+}
+
+function shortDeskCues(issue: string | null): [string, string, string] {
   const key = issue && /head|forward/.test(issue) ? "head forward" : issue || "slouching";
   const bank: Record<string, [string, string, string]> = {
     slouching: [
-      "Seated thoracic lift: both feet flat, press sit bones down, grow tall through the crown for 15 seconds, repeat 5 times.",
-      "Scapular squeeze: pinch shoulder blades together behind you, hold 5 seconds, release slowly for 10 reps.",
-      "Rib-over-hip reset: exhale, gently draw ribs back over pelvis, then breathe into your upper back.",
+      "Sit tall — ribs stacked over hips, 5 slow breaths",
+      "Pinch shoulder blades back, hold 5 sec, repeat 10x",
+      "Feet flat, unclench jaw, lengthen the back of your neck",
     ],
     "head forward": [
-      "Chin tuck: slide your head straight back (give yourself a double-chin), hold 5 seconds, repeat 8 times.",
-      "Wall angel at your chair: sit tall, arms in a W, slide them up and down keeping ribs stacked.",
-      "Chest opener: clasp hands behind the chair, lift sternum, hold 20 seconds, repeat 3 times.",
+      "Chin tuck — head straight back, hold 5 sec, 8 reps",
+      "Ears over shoulders; open chest without arching low back",
+      "Bring phone or screen up — stop hovering toward the desk",
     ],
     "leaning in": [
-      "Hip hinge reset: scoot hips back in the chair until your back meets the rest, then bring the screen closer to eye level.",
-      "Standing break: stand, roll shoulders back, march in place 30 seconds every 30 minutes.",
-      "Forearm shelf: elbows on desk at ~90°, let shoulders melt down away from ears for 20 seconds.",
+      "Scoot hips back until your back meets the chair rest",
+      "Forearms on desk, shoulders melted down, screen at eye level",
+      "Stand break — 30 sec march, roll shoulders back",
     ],
     tilted: [
-      "Pelvis leveler: feel both sit bones evenly, shift hips until weight is balanced, hold 10 seconds.",
-      "Side neck stretch: gently tilt ear toward shoulder each side for 20 seconds to release the high shoulder.",
-      "Single-arm reach: reach one arm overhead and lean slightly away to lengthen the compressed side.",
+      "Even both sit bones; level hips and shoulders",
+      "Gentle side neck stretch — 20 sec each way",
+      "Reach one arm up and lean away from the tight side",
     ],
   };
   return bank[key] || bank.slouching!;
@@ -96,11 +132,12 @@ export function exerciseFallback(input: {
   lastIssue: string | null;
 }): string {
   const focus = input.stats.topIssue || input.lastIssue || "slouching";
-  const [a, b, c] = deskExercisesFor(focus);
-  const context = input.stats.sessions
-    ? `Your logs point to ${focus.replace(/-/g, " ")} as a main pattern, with ${input.stats.uprightPct}% upright time and ${input.stats.alerts} nudges so far. `
-    : "Try these at your desk to stack a taller sitting habit: ";
-  return `${context}1) ${a} 2) ${b} 3) ${c}`;
+  const [a, b, c] = shortDeskCues(focus);
+  const label = focus.replace(/-/g, " ");
+  const intro = input.stats.sessions
+    ? `For ${label} (your logs: ${input.stats.uprightPct}% upright):`
+    : "Quick desk reset:";
+  return clampCoachReply(`${intro}\n• ${a}\n• ${b}\n• ${c}`);
 }
 
 export function templateNudge(user: User, issue: string): string {
@@ -189,13 +226,14 @@ function nudgeLooksComplete(message: string): boolean {
 }
 
 function conversationLooksComplete(message: string, exercise: boolean): boolean {
+  if (mentionsCommandMenu(message)) return false;
+  if (message.length > IMESSAGE_MAX_CHARS) return false;
   if (exercise) {
-    if (message.length < 120) return false;
-    const bullets = message.match(/\d[\).\]]/g)?.length || 0;
-    return bullets >= 2 || message.split(/\n+/).length >= 3;
+    if (message.length < 60) return false;
+    return message.includes("•") || /\d[\).\]]/.test(message) || message.split("\n").length >= 2;
   }
   const words = message.split(/\s+/).filter(Boolean);
-  return words.length >= 10 && message.length >= 45;
+  return words.length >= 4 && message.length >= 20;
 }
 
 function recapLooksComplete(message: string, debrief: SessionDebrief): boolean {
@@ -266,52 +304,58 @@ export async function conversationalReply(input: {
   lastIssue: string | null;
 }): Promise<string> {
   const useName = pickUseName(input.user.id, input.message);
-  const nameHint = useName ? `You may address them as ${input.user.firstName} once.` : "Do not use their first name in this reply.";
   const exercise = isExerciseQuestion(input.message);
   const exerciseFallbackText = exerciseFallback({ stats: input.stats, lastIssue: input.lastIssue });
+
+  if (isThanks(input.message)) {
+    return finalizeCoachReply("You're welcome — glad I could help.");
+  }
+  if (isGreeting(input.message)) {
+    const greet = useName ? `Hey ${input.user.firstName}! What's up?` : "Hey! What's up?";
+    return finalizeCoachReply(greet);
+  }
+
+  const nameHint = useName ? `You may use their first name once.` : "Do not use their first name.";
   const generalFallback = input.stats.sessions
-    ? `Looking at your numbers (${input.stats.uprightPct}% upright, top issue ${input.stats.topIssue || input.lastIssue || "still calibrating"}), think tall ribs over hips and micro-breaks every 30 minutes.`
-    : "Start a browser session when you can so I can tie advice to your posture. Until then: both feet flat, hips back in the chair, screen at eye level.";
+    ? `I'm tracking about ${input.stats.uprightPct}% upright for you lately. What's feeling off right now?`
+    : "Tell me what feels tight or slouchy — I'm here to help.";
 
   const history = input.recent.map((entry) => `${entry.role}: ${entry.content}`).join("\n");
   const dataBlock = JSON.stringify({
-    sessions: input.stats.sessions,
     uprightPct: input.stats.uprightPct,
-    totalMinutes: input.stats.totalMinutes,
-    alerts: input.stats.alerts,
-    slouchEvents: input.stats.slouchEvents,
     topIssue: input.stats.topIssue,
     lastDetectedIssue: input.lastIssue,
+    alerts: input.stats.alerts,
   });
 
   if (exercise) {
     const result = await generate(
-      `You are PosturePal, a friendly iMessage posture coach. ${nameHint}
-The user asked for desk-friendly exercises. Use their REAL data below — tie drills to how they actually sit.
-Data: ${dataBlock}
-Give exactly 2-3 numbered desk exercises they can do in a chair (concrete reps/holds). No medical claims. No telling them to text "stats". Under 90 words.`,
+      `You are PosturePal on iMessage. ${nameHint}
+User wants desk exercises. Use their data: ${dataBlock}
+Reply in under 280 characters: one short intro line, then 2-3 bullet lines starting with "•". Each bullet is one short cue. No command keywords. No essays.`,
       exerciseFallbackText,
-      320,
+      140,
     );
-    const text = result.generatedBy === "gemini" && conversationLooksComplete(result.message, true)
+    const candidate = result.generatedBy === "gemini" && conversationLooksComplete(result.message, true)
       ? result.message
       : exerciseFallbackText;
-    return text;
+    return finalizeCoachReply(candidate);
   }
 
   const result = await generate(
-    `You are PosturePal, a conversational iMessage posture coach — not a command bot. ${nameHint}
-Answer naturally in 2-3 sentences (under 75 words). Use their real data when relevant; never invent numbers or diagnose injuries.
-Do NOT list command keywords or tell them those are their only options.
-Data: ${dataBlock}
-Recent conversation:
+    `You are PosturePal on iMessage — talk like a person, not a bot. ${nameHint}
+Reply in 1-2 short sentences (under 220 characters). Match their tone. Never list commands or say "try stats/snooze/why/stop".
+Use real data only if it fits naturally: ${dataBlock}
+Recent:
 ${history || "(none)"}
 user: ${input.message}`,
     generalFallback,
-    260,
+    120,
   );
-  if (result.generatedBy === "gemini" && conversationLooksComplete(result.message, false)) return result.message;
-  return generalFallback;
+  const candidate = result.generatedBy === "gemini" && conversationLooksComplete(result.message, false)
+    ? result.message
+    : generalFallback;
+  return finalizeCoachReply(candidate);
 }
 
 export function whyReply(issue: string | null, seconds?: number): string {

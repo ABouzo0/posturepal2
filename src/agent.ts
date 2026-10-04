@@ -16,7 +16,9 @@ export function parseAgentCommand(raw: string): AgentCommand {
   if (/^(stats|status|how am i doing)\??$/.test(normalized)) return { type: "stats" };
   if (/^why\??$/.test(normalized)) return { type: "why" };
   if (/^(stop|end|off)$/.test(normalized)) return { type: "stop" };
-  if (/^(help|\?)$/.test(normalized)) return { type: "help" };
+  if (/^(help|what commands|what can i text|how do i text|list commands|what are the commands)\??$/.test(normalized)) {
+    return { type: "help" };
+  }
   if (/^(unsubscribe|stop messages)$/.test(normalized)) return { type: "unsubscribe" };
   if (/^(subscribe|start messages)$/.test(normalized)) return { type: "subscribe" };
   return { type: "free-text", text };
