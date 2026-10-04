@@ -270,7 +270,7 @@ async function processInbound(space: any, message: any) {
     await space.send("I do not recognize this number. Sign up in PosturePal first.");
     return;
   }
-  connection?.spaces.set(user.id, space);
+  if (INBOUND_MODE === "stream") connection?.spaces.set(user.id, space);
   if (!user.activated) {
     user.activated = true;
     await store.updateUser(user);
@@ -278,8 +278,9 @@ async function processInbound(space: any, message: any) {
   const text = message.content.text;
   await appendConversation(user.id, "user", text);
   const answer = await handleText(user, text);
+  const delivery = await sendTo(user, answer);
   await appendConversation(user.id, "assistant", answer);
-  await space.responding(async () => message.reply ? message.reply(answer) : space.send(answer));
+  console.log(`Photon inbound reply: ${delivery.delivered ? "sent" : delivery.reason}`);
 }
 
 if (connection && INBOUND_MODE === "stream") {
