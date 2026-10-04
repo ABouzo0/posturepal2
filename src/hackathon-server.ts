@@ -363,7 +363,7 @@ async function photonWebhook(request: IncomingMessage, response: ServerResponse)
   const fetchRequest = new Request(`http://${request.headers.host}${request.url}`, {
     method: "POST",
     headers,
-    body,
+    body: body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer,
   });
   const result = await connection.app.webhook(fetchRequest, processInbound);
   response.writeHead(result.status, Object.fromEntries(result.headers.entries()));
