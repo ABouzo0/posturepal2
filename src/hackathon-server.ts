@@ -22,6 +22,7 @@ import {
   goodPercent,
   normalizePhone,
   normalizeSlouchSeconds,
+  signupEmailForPhone,
   type Stats,
 } from "./core.js";
 import {
@@ -449,11 +450,10 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
   if (url.pathname === "/api/signup") {
     const firstName = String(body.firstName || "").trim();
     const lastName = String(body.lastName || "").trim();
-    const email = String(body.email || "").trim().toLowerCase();
     const phone = normalizePhone(String(body.phone || ""));
     if (!firstName || !lastName) return sendJson(response, { error: "Enter your first and last name." }, 400, headers);
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return sendJson(response, { error: "Enter a valid email." }, 400, headers);
     if (!phone) return sendJson(response, { error: "Enter a valid phone number." }, 400, headers);
+    const email = signupEmailForPhone(phone, body.email);
     if (body.consent !== true) return sendJson(response, { error: "Consent is required for iMessage alerts." }, 400, headers);
     const existing = await store.findUserByPhone(phone);
     if (existing) {

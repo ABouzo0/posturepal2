@@ -344,7 +344,7 @@ $("signupForm").onsubmit = async (event) => {
   const form = new FormData(event.target);
   try {
     const result = await post("/api/signup", {
-      firstName: form.get("firstName"), lastName: form.get("lastName"), email: form.get("email"),
+      firstName: form.get("firstName"), lastName: form.get("lastName"),
       phone: form.get("phone"), consent: form.get("consent") === "on",
     });
     user = result.user; saveUser(); showView();
@@ -395,7 +395,7 @@ function initHeroCanvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     for (let y = 0; y < canvas.height; y += 12) {
       for (let x = 0; x < canvas.width; x += 12) {
-        ctx.fillStyle = "rgba(34,211,238,0.04)";
+        ctx.fillStyle = "rgba(224, 177, 90, 0.05)";
         ctx.fillRect(x, y, 1, 1);
       }
     }
@@ -403,7 +403,7 @@ function initHeroCanvas() {
       const slump = index < 4 ? wobble * 2.5 : wobble;
       return { x: (x + slump) * canvas.width, y: (y + slump * 0.4) * canvas.height };
     });
-    ctx.strokeStyle = "rgba(34,211,238,0.55)";
+    ctx.strokeStyle = "rgba(224, 177, 90, 0.55)";
     ctx.lineWidth = 1;
     edges.forEach(([a, b]) => {
       ctx.beginPath();
@@ -413,7 +413,7 @@ function initHeroCanvas() {
     });
     points.forEach((point, index) => {
       ctx.beginPath();
-      ctx.fillStyle = index === 0 ? "#22d3ee" : "rgba(74,222,128,0.85)";
+      ctx.fillStyle = index === 0 ? "#e0b15a" : "rgba(201, 162, 88, 0.75)";
       ctx.arc(point.x, point.y, index === 0 ? 4 : 2.5, 0, Math.PI * 2);
       ctx.fill();
     });

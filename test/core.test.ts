@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canSendAlert, goodPercent, normalizePhone, normalizeSlouchSeconds } from "../src/core.js";
+import { canSendAlert, goodPercent, normalizePhone, normalizeSlouchSeconds, signupEmailForPhone } from "../src/core.js";
 
 test("normalizes configurable slouch timing", () => {
   assert.equal(normalizeSlouchSeconds("45"), 45);
@@ -13,6 +13,11 @@ test("normalizes North American and international phone numbers", () => {
   assert.equal(normalizePhone("(415) 555-0137"), "+14155550137");
   assert.equal(normalizePhone("+44 20 7946 0958"), "+442079460958");
   assert.equal(normalizePhone("123"), null);
+});
+
+test("synthesizes signup email from phone when omitted", () => {
+  assert.equal(signupEmailForPhone("+14155550137"), "pp+14155550137@users.posturepal.app");
+  assert.equal(signupEmailForPhone("+14155550137", "  Me@Example.com "), "me@example.com");
 });
 
 test("requires a sustained slouch before allowing an alert", () => {
