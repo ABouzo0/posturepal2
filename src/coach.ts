@@ -17,7 +17,7 @@ const fallbacks: Record<string, string[]> = {
 
 const pick = (values: string[]) => values[Math.floor(Math.random() * values.length)]!;
 const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
-const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 async function generate(prompt: string, fallback: string): Promise<string> {
   if (!ai) return fallback;

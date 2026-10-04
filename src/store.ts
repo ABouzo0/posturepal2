@@ -336,6 +336,12 @@ function aggregateStats(sessions: SessionRecord[], events: SlouchEvent[]): DemoS
 }
 
 export async function createStore(): Promise<PostureStore> {
+  if (!process.env.DATABASE_URL && process.env.NEON_DATA_API_URL) {
+    console.warn(
+      "NEON_DATA_API_URL is set, but PostgREST access needs a JWT and this server uses pg. " +
+      "Set DATABASE_URL to the pooled Neon Postgres connection string; using memory until then.",
+    );
+  }
   const store: PostureStore = process.env.DATABASE_URL
     ? new PostgresStore(process.env.DATABASE_URL)
     : new MemoryStore();

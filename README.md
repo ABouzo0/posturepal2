@@ -37,7 +37,7 @@ All secrets stay on the server. Never add `.env` to git or put these values in `
 | `ALERT_COOLDOWN_MINUTES` | No | Minimum interval between iMessages |
 | `DATABASE_URL` | For Neon | Pooled Neon Postgres runtime URL |
 | `GEMINI_API_KEY` | For personalized coaching | Google AI Studio API key |
-| `GEMINI_MODEL` | No | Defaults to `gemini-2.5-flash` |
+| `GEMINI_MODEL` | No | Defaults to `gemini-3.8-flash` |
 | `PHOTON_INBOUND_MODE` | No | `stream` (default) or `webhook` |
 | `SPECTRUM_WEBHOOK_SECRET` | Webhook mode only | Photon native webhook signing secret |
 
@@ -109,6 +109,14 @@ Set `DATABASE_URL` to the pooled connection string from Neon:
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@ENDPOINT-pooler.REGION.aws.neon.tech/DB?sslmode=require
 ```
+
+For the current supplied endpoint, copy the role and password from Neon Console → **Connect**, then use:
+
+```env
+DATABASE_URL=postgresql://ROLE:PASSWORD@ep-aged-union-b4csf74v-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+```
+
+The HTTPS `NEON_DATA_API_URL` is not interchangeable with this string. Protected Data API requests require `Authorization: Bearer <JWT>` from Neon Auth or another configured identity provider plus database grants/RLS policies. PosturePal intentionally stays on the memory fallback when only that URL is present.
 
 At startup PosturePal creates the required tables and indexes for users, sessions, slouch events, settings, and conversation memory. For production schema administration, use Neon's direct/unpooled URL in your database tooling. Do not expose either URL to browser code.
 
