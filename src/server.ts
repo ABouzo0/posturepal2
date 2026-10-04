@@ -233,8 +233,7 @@ if (connection) {
   void (async () => {
     for await (const [space, message] of connection.app.messages) {
       if (message.platform !== "imessage" || message.content.type !== "text") continue;
-      const sender = imessage(message).sender;
-      const user = findUserByAddress(sender?.address);
+      const user = findUserByAddress(message.sender?.address || message.sender?.id);
       if (!user) {
         await space.send("Sign up at posturepal.tech before messaging PosturePal.");
         continue;
