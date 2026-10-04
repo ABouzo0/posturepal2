@@ -422,37 +422,6 @@ function initHeroCanvas() {
   draw();
 }
 
-function initAlignmentDemo() {
-  const slider = document.getElementById("alignmentDemo");
-  const board = document.getElementById("demoDashboard");
-  if (!slider || !board) return;
-  const upright = document.getElementById("demoUpright");
-  const slouch = document.getElementById("demoSlouch");
-  const nudges = document.getElementById("demoNudges");
-  const trend = document.getElementById("demoTrend");
-  const statusLabel = document.getElementById("demoStatusLabel");
-  const statusPct = document.getElementById("demoStatusPct");
-  const message = document.getElementById("demoMessage");
-  const paint = () => {
-    const value = Number(slider.value);
-    const aligned = value >= 72;
-    board.classList.toggle("slouched", !aligned);
-    board.classList.toggle("aligned", aligned);
-    const pct = Math.round(52 + value * 0.45);
-    upright.textContent = `${pct}%`;
-    slouch.textContent = aligned ? "0s" : `${Math.max(8, Math.round((100 - value) * 0.5))}s`;
-    nudges.textContent = aligned ? "0" : String(Math.max(1, Math.round((100 - value) / 30)));
-    trend.textContent = aligned ? "+6%" : "−4%";
-    statusPct.textContent = `${pct}% upright`;
-    statusLabel.textContent = aligned ? "Calm · aligned" : "Alert · sustained slouch";
-    message.textContent = aligned ? "Session steady · debrief ready when you stop" : "iMessage queued · voice nudge primed";
-    document.querySelectorAll(".demo-metric")[0]?.classList.toggle("alert", !aligned);
-  };
-  slider.addEventListener("input", paint);
-  paint();
-}
-
 initHeroCanvas();
-initAlignmentDemo();
 showView();
 verifyUser();

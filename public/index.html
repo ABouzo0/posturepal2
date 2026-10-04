@@ -30,10 +30,6 @@
         </div>
         <div class="hero-visual" aria-hidden="true">
           <div class="browser-frame">
-            <div class="browser-chrome">
-              <span></span><span></span><span></span>
-              <p>posturepal — live webcam</p>
-            </div>
             <div class="browser-stage">
               <canvas id="heroCanvas" width="480" height="320"></canvas>
               <div class="scanline"></div>
@@ -59,31 +55,6 @@
             <h2>The De-Brief</h2>
             <p>End-of-session recap: alignment percentage, slouch breakdown, and how today compares to your history.</p>
           </article>
-        </div>
-      </section>
-
-      <section class="launch-panel demo-section" aria-label="Alignment preview">
-        <div class="demo-head">
-          <h2>From slouch to alignment</h2>
-          <p class="muted">Drag the slider — this mock dashboard mirrors what your session stats feel like in motion.</p>
-        </div>
-        <label class="alignment-label" for="alignmentDemo">
-          <span>Slouched</span>
-          <input id="alignmentDemo" type="range" min="0" max="100" value="18" />
-          <span>Perfect alignment</span>
-        </label>
-        <div id="demoDashboard" class="demo-dashboard slouched">
-          <div class="demo-status">
-            <span id="demoStatusLabel">Alert · sustained slouch</span>
-            <span id="demoStatusPct">62% upright</span>
-          </div>
-          <div class="demo-grid">
-            <div class="demo-metric alert"><strong id="demoUpright">62%</strong><span>alignment</span></div>
-            <div class="demo-metric"><strong id="demoSlouch">38s</strong><span>slouch streak</span></div>
-            <div class="demo-metric"><strong id="demoNudges">2</strong><span>nudges sent</span></div>
-            <div class="demo-metric"><strong id="demoTrend">−4%</strong><span>vs last session</span></div>
-          </div>
-          <p id="demoMessage" class="demo-message">iMessage queued · voice nudge primed</p>
         </div>
       </section>
 
