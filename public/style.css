@@ -732,6 +732,48 @@ output {
   letter-spacing: 0.08em;
 }
 
+.debrief-panel {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: var(--radius);
+  background: var(--graphite);
+  animation: rise 280ms var(--ease) both;
+}
+
+.debrief-panel h3 {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.debrief-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.debrief-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-1);
+}
+
+.debrief-list li span:first-child {
+  color: var(--muted);
+}
+
+.debrief-recap {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
 details {
   font-size: 0.8125rem;
   color: var(--muted);

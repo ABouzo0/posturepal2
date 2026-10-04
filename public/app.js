@@ -306,13 +306,37 @@ async function stop(report = true) {
   const tracked = mode === "tracking";
   mode = "idle"; clearInterval(heartbeat); cameraOff(); status("Not tracking");
   $("startBtn").disabled = false; $("stopBtn").disabled = true; $("calibrateBtn").disabled = true;
+  $("debriefPanel")?.classList.add("hidden");
   if (report && tracked) {
     const result = await post("/api/session/stop", { stats: roundedStats() }).catch(() => null);
+    if (result?.debrief) renderDebrief(result.debrief, result.recap);
     if (result?.recap) {
-      flash(`Session recap · ${result.recap}`, 7000);
+      flash(`Session recap · ${result.recap}`, 9000);
       await speak({ message: result.recap, audioUrl: result.audioUrl });
     }
   }
+}
+
+function renderDebrief(debrief, recapText) {
+  const panel = $("debriefPanel");
+  const list = $("debriefList");
+  if (!panel || !list || !debrief) return;
+  const comparison = debrief.comparison === "first_session"
+    ? "First PosturePal session — no lifetime average yet"
+    : debrief.comparison === "equal"
+      ? `Matches lifetime average (${debrief.lifetimeUprightPct}% upright)`
+      : debrief.comparison === "higher"
+        ? `${debrief.deltaPct} pts above lifetime avg (${debrief.lifetimeUprightPct}%)`
+        : `${debrief.deltaPct} pts below lifetime avg (${debrief.lifetimeUprightPct}%)`;
+  list.innerHTML = [
+    ["Session length", `${debrief.minutes} min`],
+    ["Nudges sent", String(debrief.nudges)],
+    ["Upright this session", `${debrief.uprightPct}%`],
+    ["Vs lifetime average", comparison],
+  ].map(([label, value]) => `<li><span>${label}</span><strong>${value}</strong></li>`).join("");
+  const recap = $("debriefRecap");
+  if (recap) recap.textContent = recapText || "";
+  panel.classList.remove("hidden");
 }
 
 $("signupForm").onsubmit = async (event) => {

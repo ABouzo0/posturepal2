@@ -7,7 +7,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { parseAgentCommand } from "./agent.js";
-import { conversationalReply, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
+import { buildSessionDebrief, conversationalReply, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
 import {
   canSendAlert,
   emptyStats,
@@ -565,22 +565,23 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     const endedAt = new Date().toISOString();
     const topIssue = Object.entries(state.stats.issueCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     const history = await store.demoStats(user.id);
+    const minutes = Math.max(1, Math.round((Date.now() - state.sessionStart) / 60_000));
+    const goodPct = goodPercent(state.stats);
+    const nudges = state.stats.alerts;
+    const debrief = buildSessionDebrief({ minutes, goodPct, nudges, priorHistory: history });
     const recapCopy = await sessionRecap({
       user,
-      minutes: Math.max(1, Math.round((Date.now() - state.sessionStart) / 60_000)),
-      goodPct: goodPercent(state.stats),
-      alerts: state.stats.alerts,
+      debrief,
       topIssue,
-      history,
     });
     const session: SessionRecord = {
       id: state.sessionId || crypto.randomUUID(),
       userId: user.id,
       start: new Date(state.sessionStart).toISOString(),
       end: endedAt,
-      minutes: Math.max(1, Math.round((Date.now() - state.sessionStart) / 60_000)),
-      goodPct: goodPercent(state.stats),
-      alerts: state.stats.alerts,
+      minutes,
+      goodPct,
+      alerts: nudges,
       topIssue,
       stats: state.stats,
       recap: recapCopy.message,
@@ -595,6 +596,7 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
       ok: true,
       session,
       recap: recapCopy.message,
+      debrief,
       delivery,
       audioUrl: audio.url,
       audioProvider: audio.url ? "elevenlabs" : "browser",
