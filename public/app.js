@@ -189,6 +189,21 @@ function deliveryReason(reason) {
     "unsubscribed": "this number is unsubscribed",
   }[reason] || reason || "unknown delivery error";
 }
+function showWelcomeDelivery(result) {
+  const delivery = result.delivery;
+  if (!delivery) return flash("Could not verify iMessage delivery status.", 6000);
+  if (delivery.status === "sent") {
+    $("activateBanner").textContent = "Verification iMessage sent. Reply “hi” to activate posture alerts.";
+    return flash(result.returning ? "Welcome-back iMessage sent." : "Verification iMessage sent. Reply “hi” to activate alerts.", 6000);
+  }
+  if (delivery.status === "pending-allow-list") {
+    $("activateBanner").textContent = "This number is pending the Photon project allow-list. Add it there, then sign in again.";
+    return flash("iMessage pending: add this number to the Photon project allow-list.", 7000);
+  }
+  const detail = delivery.detail || deliveryReason(delivery.reason);
+  $("activateBanner").textContent = `Verification iMessage failed: ${detail}`;
+  flash(`iMessage failed: ${detail}`, 7000);
+}
 async function calibrate() {
   mode = "calibrating"; samples = [];
   flash(`Sit upright and hold still for ${CALIBRATION_SECONDS} seconds`, CALIBRATION_SECONDS * 1000);
@@ -239,7 +254,7 @@ $("signupForm").onsubmit = async (event) => {
       phone: form.get("phone"), consent: form.get("consent") === "on",
     });
     user = result.user; saveUser(); showView();
-    flash(result.warning ? deliveryReason(result.warning) : "Check iMessage and reply “hi” to activate alerts.", 6000);
+    showWelcomeDelivery(result);
   } catch (error) {
     $("signupError").textContent = error.message; $("signupError").classList.remove("hidden");
   } finally { $("signupBtn").disabled = false; }

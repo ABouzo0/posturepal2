@@ -58,6 +58,12 @@ This implementation intentionally uses Photon's managed cloud provider, as docum
 
 Photon credentials and access to the project/line are user-owned actions and cannot be completed from this repository.
 
+Every new signup and returning phone-number sign-in attempts a verification iMessage from the managed Photon line. The UI reports one of three transport outcomes:
+
+- **Sent:** Spectrum accepted the message; the recipient should reply `hi`.
+- **Pending allow-list:** Photon rejected the target as not allowed; add the E.164 number to the project and sign in again.
+- **Failed:** the UI shows the sanitized Photon error reason. Project credentials, phone numbers, and secrets are redacted.
+
 ### Delivery diagnostics
 
 `GET /api/health` must report `"photon":"connected"` before the app can send an iMessage. When credentials are absent, PosturePal keeps the voice alert and logs the intended message locally, but the API returns `sent: false`, `channel: "terminal"`, and `reason: "photon-not-configured"`—it never labels a terminal fallback as delivered.

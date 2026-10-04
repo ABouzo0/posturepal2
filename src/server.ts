@@ -163,14 +163,30 @@ if (PROJECT_ID && PROJECT_SECRET) {
 }
 
 type DeliveryResult =
-  | { delivered: true; channel: "imessage" }
-  | { delivered: false; channel: "terminal" | "imessage"; reason: string };
+  | { delivered: true; channel: "imessage"; status: "sent" }
+  | {
+      delivered: false;
+      channel: "terminal" | "imessage";
+      status: "pending-allow-list" | "failed";
+      reason: string;
+      detail?: string;
+    };
+
+function safePhotonDetail(value: string, user: User): string {
+  return value
+    .replaceAll(PROJECT_ID, "[redacted project]")
+    .replaceAll(PROJECT_SECRET, "[redacted credential]")
+    .replaceAll(user.phone, "[redacted phone]")
+    .replace(/\+\d{8,15}/g, "[redacted phone]")
+    .replace(/\s+/g, " ")
+    .slice(0, 300);
+}
 
 async function sendTo(user: User, message: string): Promise<DeliveryResult> {
-  if (user.optedOut) return { delivered: false, channel: "imessage", reason: "unsubscribed" };
+  if (user.optedOut) return { delivered: false, channel: "imessage", status: "failed", reason: "unsubscribed" };
   if (!connection) {
     console.log(`[local notification for ${user.phone}] ${message}`);
-    return { delivered: false, channel: "terminal", reason: "photon-not-configured" };
+    return { delivered: false, channel: "terminal", status: "failed", reason: "photon-not-configured" };
   }
   try {
     let space = connection.spaces.get(user.id);
@@ -180,15 +196,26 @@ async function sendTo(user: User, message: string): Promise<DeliveryResult> {
       connection.spaces.set(user.id, space);
     }
     await space.send(message);
-    return { delivered: true, channel: "imessage" };
+    console.log("Photon delivery result: sent");
+    return { delivered: true, channel: "imessage", status: "sent" };
   } catch (error) {
     const detail = String((error as Error).message || error);
-    console.error(`Photon send failed for ${user.phone}: ${detail}`);
+    const safeDetail = safePhotonDetail(detail, user);
+    console.error(`Photon delivery result: failed (${safeDetail})`);
     connection.spaces.delete(user.id);
-    if (/new contact|until they respond|RESOURCE_EXHAUSTED/i.test(detail)) return { delivered: false, channel: "imessage", reason: "needs-reply" };
-    if (/target not allowed/i.test(detail)) return { delivered: false, channel: "imessage", reason: "not-allowed" };
-    return { delivered: false, channel: "imessage", reason: "send-error" };
+    if (/new contact|until they respond|RESOURCE_EXHAUSTED/i.test(detail))
+      return { delivered: false, channel: "imessage", status: "failed", reason: "needs-reply", detail: safeDetail };
+    if (/target not allowed/i.test(detail))
+      return { delivered: false, channel: "imessage", status: "pending-allow-list", reason: "not-allowed", detail: safeDetail };
+    return { delivered: false, channel: "imessage", status: "failed", reason: "send-error", detail: safeDetail };
   }
+}
+
+async function sendWelcome(user: User, returning: boolean): Promise<DeliveryResult> {
+  const message = returning
+    ? `Welcome back, ${user.firstName}! Reply “hi” to verify this number for PosturePal alerts.`
+    : `Hi ${user.firstName}! Reply “hi” to verify this number for PosturePal slouch alerts. Reply “unsubscribe” anytime.`;
+  return sendTo(user, message);
 }
 
 function findUserByAddress(address?: string): User | undefined {
@@ -343,7 +370,10 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     if (!phone) return sendJson(response, { error: "Enter a valid phone number." }, 400, headers);
     if (body.consent !== true) return sendJson(response, { error: "Consent is required for iMessage alerts." }, 400, headers);
     const existing = users.find((user) => user.phone === phone);
-    if (existing) return sendJson(response, { user: publicUser(existing), returning: true }, 200, headers);
+    if (existing) {
+      const delivery = await sendWelcome(existing, true);
+      return sendJson(response, { user: publicUser(existing), returning: true, delivery }, 200, headers);
+    }
     const registration = await addPhotonUser({ firstName, lastName, email, phone });
     const user: User = {
       id: crypto.randomUUID(),
@@ -358,12 +388,12 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     };
     users.push(user);
     await saveUsers();
-    const welcome = await sendTo(user, `Hi ${firstName}! Reply “hi” to activate PosturePal slouch alerts. Reply “unsubscribe” anytime.`);
+    const welcome = await sendWelcome(user, false);
     return sendJson(response, {
       user: publicUser(user),
       returning: false,
       delivery: welcome,
-      warning: registration.warning || (!welcome.delivered ? welcome.reason : undefined),
+      registrationWarning: registration.warning,
     }, 201, headers);
   }
 
