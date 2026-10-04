@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: posturepal
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATA_DIR
+        value: /var/data/posturepal
+      - key: ALLOWED_ORIGINS
+        value: https://posturepal.tech,https://www.posturepal.tech
+      - key: DEFAULT_SLOUCH_SECONDS
+        value: "30"
+      - key: ALERT_COOLDOWN_MINUTES
+        value: "10"
+      - key: SPECTRUM_PROJECT_ID
+        sync: false
+      - key: SPECTRUM_PROJECT_SECRET
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        value: JBFqnCBsd6RMkjVDRZzb
+    disk:
+      name: posturepal-data
+      mountPath: /var/data
+      sizeGB: 1

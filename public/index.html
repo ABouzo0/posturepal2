@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Private, real-time posture coaching with voice and iMessage alerts." />
+    <title>PosturePal — real-time posture coaching</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Posture<span>Pal</span></a>
+      <div class="header-actions">
+        <span id="hello" class="muted hidden"></span>
+        <button id="signOutBtn" class="text-button hidden">Sign out</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">PRIVATE BY DESIGN · REAL-TIME COACHING</p>
+        <h1>Sit better.<br /><em>Feel better.</em></h1>
+        <p class="lede">PosturePal watches your posture on-device and nudges you only after a sustained slouch. No video ever leaves your browser.</p>
+      </section>
+
+      <section id="signup" class="card signup-card">
+        <div>
+          <p class="step">01</p>
+          <h2>Set up your coach</h2>
+          <p class="muted">Your number receives private iMessage nudges. Reply “hi” once to activate Photon messaging.</p>
+        </div>
+        <form id="signupForm">
+          <div class="two-col">
+            <label>First name<input required name="firstName" autocomplete="given-name" /></label>
+            <label>Last name<input required name="lastName" autocomplete="family-name" /></label>
+          </div>
+          <label>Email<input required type="email" name="email" autocomplete="email" /></label>
+          <label>iMessage phone<input required type="tel" name="phone" placeholder="+1 415 555 0137" autocomplete="tel" /></label>
+          <label class="consent"><input required type="checkbox" name="consent" /> I agree to receive automated posture iMessages. Message and data rates may apply. Reply STOP or “unsubscribe” anytime.</label>
+          <p id="signupError" class="error hidden"></p>
+          <button id="signupBtn" class="primary" type="submit">Create my PosturePal</button>
+        </form>
+      </section>
+
+      <section id="tracker" class="hidden tracker">
+        <div id="activateBanner" class="notice hidden">Reply <strong>hi</strong> to the welcome iMessage to activate phone alerts. Audio alerts work now.</div>
+        <div class="camera-card">
+          <div class="camera-top">
+            <span id="pill" class="pill off">● Camera off</span>
+            <span id="timer">0:00</span>
+          </div>
+          <div class="stage">
+            <video id="video" playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div id="placeholder"><span>◌</span><p>Your camera preview appears here</p></div>
+          </div>
+          <div id="status" class="status">Not tracking</div>
+          <div id="banner" class="banner hidden"></div>
+        </div>
+
+        <aside class="controls card">
+          <p class="step">02</p>
+          <h2>Choose your nudge</h2>
+          <label>Sustained slouch time
+            <div class="range-row"><input id="slouchSeconds" type="range" min="5" max="120" step="5" value="30" /><output id="slouchOutput">30 sec</output></div>
+          </label>
+          <label>Sensitivity
+            <select id="sensitivity"><option value="low">Relaxed</option><option value="medium" selected>Balanced</option><option value="high">Responsive</option></select>
+          </label>
+          <label class="toggle"><input id="audioEnabled" type="checkbox" checked /> Play voice alert on this device</label>
+          <div class="actions">
+            <button id="startBtn" class="primary">Start posture session</button>
+            <button id="stopBtn" disabled>Stop</button>
+          </div>
+          <div class="actions">
+            <button id="calibrateBtn" disabled>Recalibrate</button>
+            <button id="testBtn">Test alerts</button>
+          </div>
+          <p id="calibInfo" class="muted small"></p>
+          <div class="stats">
+            <div><strong id="goodPct">–</strong><span>upright</span></div>
+            <div><strong id="alerts">0</strong><span>alerts</span></div>
+          </div>
+          <details><summary>Live posture metrics</summary><ul id="metrics"></ul></details>
+        </aside>
+      </section>
+    </main>
+
+    <footer><span>PosturePal</span><span>Camera processing stays on your device.</span></footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
