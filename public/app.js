@@ -344,7 +344,7 @@ $("signupForm").onsubmit = async (event) => {
   const form = new FormData(event.target);
   try {
     const result = await post("/api/signup", {
-      firstName: form.get("firstName"), lastName: form.get("lastName"), email: form.get("email"),
+      firstName: form.get("firstName"), lastName: form.get("lastName"),
       phone: form.get("phone"), consent: form.get("consent") === "on",
     });
     user = result.user; saveUser(); showView();
@@ -380,46 +380,58 @@ function initHeroCanvas() {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  let frame = 0;
-  const joints = [
-    [0.5, 0.16], [0.5, 0.28], [0.38, 0.34], [0.62, 0.34], [0.32, 0.48], [0.68, 0.48],
-    [0.28, 0.62], [0.72, 0.62], [0.42, 0.52], [0.58, 0.52], [0.46, 0.78], [0.54, 0.78],
-    [0.44, 0.94], [0.56, 0.94],
-  ];
-  const edges = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [2, 8], [3, 9], [8, 10], [9, 11], [10, 12], [11, 13], [8, 9]];
-  const draw = () => {
-    frame += 1;
-    const wobble = Math.sin(frame * 0.04) * 0.012;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#060708";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < canvas.height; y += 12) {
-      for (let x = 0; x < canvas.width; x += 12) {
-        ctx.fillStyle = "rgba(34,211,238,0.04)";
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-    const points = joints.map(([x, y], index) => {
-      const slump = index < 4 ? wobble * 2.5 : wobble;
-      return { x: (x + slump) * canvas.width, y: (y + slump * 0.4) * canvas.height };
-    });
-    ctx.strokeStyle = "rgba(34,211,238,0.55)";
-    ctx.lineWidth = 1;
-    edges.forEach(([a, b]) => {
-      ctx.beginPath();
-      ctx.moveTo(points[a].x, points[a].y);
-      ctx.lineTo(points[b].x, points[b].y);
-      ctx.stroke();
-    });
-    points.forEach((point, index) => {
-      ctx.beginPath();
-      ctx.fillStyle = index === 0 ? "#22d3ee" : "rgba(74,222,128,0.85)";
-      ctx.arc(point.x, point.y, index === 0 ? 4 : 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    requestAnimationFrame(draw);
+  const ink = "#1c211d", rule = "#cfc7b4", green = "#1e5c42", alert = "#b8452f";
+  const hip = { x: 170, y: 300 }, knee = { x: 292, y: 304 }, ankle = { x: 296, y: 420 };
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const line = (points, color, width) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+    ctx.stroke();
   };
-  draw();
+  const draw = (time) => {
+    // Slow drift forward, hold, then snap back upright.
+    const cycle = (time / 7000) % 1;
+    const slump = reduceMotion ? 0.15 : cycle < 0.7 ? Math.sin((cycle / 0.7) * Math.PI / 2) : 1 - (cycle - 0.7) / 0.3;
+    const shoulder = { x: 176 + slump * 34, y: 172 + slump * 14 };
+    const ear = { x: 180 + slump * 70, y: 98 + slump * 30 };
+    const slouching = ear.x - hip.x > 50;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Chair and floor.
+    line([{ x: 120, y: 180 }, { x: 128, y: 318 }, { x: 300, y: 318 }], rule, 6);
+    line([{ x: 140, y: 318 }, { x: 140, y: 440 }], rule, 4);
+    line([{ x: 286, y: 318 }, { x: 286, y: 440 }], rule, 4);
+    line([{ x: 30, y: 442 }, { x: 390, y: 442 }], ink, 1);
+
+    // Plumb line through the hip.
+    ctx.setLineDash([4, 6]);
+    line([{ x: hip.x, y: 24 }, { x: hip.x, y: 442 }], green, 1);
+    ctx.setLineDash([]);
+
+    // Body: legs, curved spine, neck.
+    line([hip, knee, ankle, { x: 330, y: 422 }], ink, 3);
+    ctx.strokeStyle = ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(hip.x, hip.y);
+    ctx.quadraticCurveTo(hip.x - 10 - slump * 6, (hip.y + shoulder.y) / 2, shoulder.x, shoulder.y);
+    ctx.stroke();
+    line([shoulder, ear], ink, 3);
+
+    // Head, coloured by alignment.
+    ctx.fillStyle = slouching ? alert : green;
+    ctx.beginPath(); ctx.arc(ear.x, ear.y - 18, 24, 0, Math.PI * 2); ctx.fill();
+    [shoulder, hip].forEach((joint) => { ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2); ctx.fill(); });
+
+    // Offset measurement from the plumb line.
+    if (ear.x - hip.x > 16) {
+      line([{ x: hip.x, y: ear.y - 52 }, { x: ear.x, y: ear.y - 52 }], slouching ? alert : rule, 1.5);
+      ctx.fillStyle = slouching ? alert : "#5a6159";
+      ctx.font = "italic 18px 'Instrument Serif', Georgia, serif";
+      ctx.fillText(`${Math.round((ear.x - hip.x) / 4)}°`, ear.x + 10, ear.y - 47);
+    }
+    if (!reduceMotion) requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
 }
 
 initHeroCanvas();

@@ -3,70 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Good posture, automated — on-device camera, iMessage nudges, session debriefs." />
-    <title>PosturePal — Good posture, automated.</title>
+    <meta name="description" content="PosturePal watches your posture through your laptop camera and texts you when you slouch." />
+    <title>PosturePal</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div class="ambient" aria-hidden="true"></div>
     <header class="site-header">
-      <a class="brand" href="/">Posture<span>Pal</span></a>
+      <a class="brand" href="/">PosturePal</a>
       <div class="header-actions">
         <span id="hello" class="muted hidden"></span>
-        <a class="ghost-link launch-panel" href="#signup">Get started</a>
+        <a class="ghost-link launch-panel" href="#signup">Sign up</a>
         <button id="signOutBtn" class="text-button hidden">Sign out</button>
       </div>
     </header>
 
     <main>
-      <section class="launch-panel hero cinematic">
+      <section class="launch-panel hero">
         <div class="hero-copy">
-          <p class="eyebrow">On-device · iMessage · Voice</p>
-          <h1>Good posture, automated.</h1>
+          <h1>Sit up straight. <em>We'll text you when you don't.</em></h1>
           <p class="lede">
-            One browser camera flags a sustained slouch, pings iMessage, and summarizes the session — video never leaves your device.
+            PosturePal watches through your laptop camera, notices when you've been slouching for a while, and sends you an iMessage. The video stays on your machine.
           </p>
+          <a class="cta" href="#signup">Set it up — takes a minute</a>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <div class="browser-frame">
-            <div class="browser-stage">
-              <canvas id="heroCanvas" width="480" height="320"></canvas>
-              <div class="scanline"></div>
-            </div>
-          </div>
-        </div>
+        <figure class="hero-figure" aria-hidden="true">
+          <canvas id="heroCanvas" width="420" height="460"></canvas>
+          <figcaption><span>Fig. 1</span> Ear over shoulder over hip. Drift too far forward and you'll hear about it.</figcaption>
+        </figure>
       </section>
 
-      <section class="launch-panel loop" aria-label="How PosturePal works">
-        <div class="loop-track">
-          <article class="loop-card">
-            <p class="step">01</p>
-            <h2>The Watchful Eye</h2>
-            <p>MediaPipe reads joints in your browser. No frames uploaded, no cloud storage — just live geometry.</p>
-          </article>
-          <article class="loop-card">
-            <p class="step">02</p>
-            <h2>The Whisper</h2>
-            <p>After your chosen slouch window, Photon sends an iMessage while ElevenLabs speaks the same nudge on-device.</p>
-          </article>
-          <article class="loop-card">
-            <p class="step">03</p>
-            <h2>The De-Brief</h2>
-            <p>End-of-session recap: alignment percentage, slouch breakdown, and how today compares to your history.</p>
-          </article>
-        </div>
+      <section class="launch-panel how" aria-label="How PosturePal works">
+        <h2 class="section-label">How it works</h2>
+        <ol class="how-list">
+          <li>
+            <h3>It watches</h3>
+            <p>MediaPipe tracks your shoulders and head right in the browser. Nothing is uploaded or recorded.</p>
+          </li>
+          <li>
+            <h3>It nudges</h3>
+            <p>Slouch past the time you set and you get an iMessage, plus an optional spoken reminder from ElevenLabs.</p>
+          </li>
+          <li>
+            <h3>It reports back</h3>
+            <p>When you stop, you get a short recap: how long you sat upright and how that compares to your usual.</p>
+          </li>
+        </ol>
       </section>
 
-      <section id="signup" class="card signup-card launch-panel">
-        <div>
-          <p class="step">Setup</p>
-          <h2>Activate your coach</h2>
-          <p class="muted">Photon only texts allow-listed numbers. Two quick replies and you are live:</p>
+      <section id="signup" class="signup launch-panel">
+        <div class="signup-intro">
+          <h2>Sign up</h2>
+          <p class="muted">PosturePal texts over iMessage, so we just need a name and a number.</p>
           <ol class="onboarding">
-            <li><strong>Join the allow-list.</strong> Ask the demo owner to add this exact iMessage number in Photon.</li>
-            <li><strong>Reply “hi”.</strong> We send a verification iMessage. Your reply activates two-way coaching.</li>
-            <li><strong>Keep texting anytime.</strong> Ask in plain language — stats, why, snooze, and stop work when you want quick controls.</li>
+            <li><strong>Reply “hi”.</strong> We'll send a welcome message — replying turns on two-way coaching.</li>
+            <li><strong>Text it anytime.</strong> Ask for stats, snooze it, or tell it to stop.</li>
           </ol>
         </div>
         <form id="signupForm">
@@ -74,8 +65,7 @@
             <label>First name<input required name="firstName" autocomplete="given-name" /></label>
             <label>Last name<input required name="lastName" autocomplete="family-name" /></label>
           </div>
-          <label>Email<input required type="email" name="email" autocomplete="email" /></label>
-          <label>iMessage phone<input required type="tel" name="phone" placeholder="+1 415 555 0137" autocomplete="tel" /></label>
+          <label>iMessage phone number<input required type="tel" name="phone" placeholder="+1 415 555 0137" autocomplete="tel" /></label>
           <label class="consent"><input required type="checkbox" name="consent" /> I agree to receive automated posture iMessages. Message and data rates may apply. Reply STOP or “unsubscribe” anytime.</label>
           <p id="signupError" class="error hidden"></p>
           <button id="signupBtn" class="primary" type="submit">Create my PosturePal</button>
@@ -92,15 +82,14 @@
           <div class="stage">
             <video id="video" playsinline muted></video>
             <canvas id="overlay"></canvas>
-            <div id="placeholder"><span>◌</span><p>Your camera preview appears here</p></div>
+            <div id="placeholder"><p>Your camera preview will show up here.</p></div>
           </div>
           <div id="status" class="status">Not tracking</div>
           <div id="banner" class="banner hidden"></div>
         </div>
 
         <aside class="controls card">
-          <p class="step">Session</p>
-          <h2>Choose your nudge</h2>
+          <h2>Session settings</h2>
           <label>Sustained slouch time
             <div class="range-row"><input id="slouchSeconds" type="range" min="5" max="120" step="5" value="30" /><output id="slouchOutput">30 sec</output></div>
           </label>
@@ -129,8 +118,7 @@
             <div><strong id="alerts">0</strong><span>alerts</span></div>
           </div>
           <div id="debriefPanel" class="debrief-panel hidden" aria-live="polite">
-            <p class="step">De-brief</p>
-            <h3>Session report</h3>
+            <h3>Session recap</h3>
             <ul id="debriefList" class="debrief-list"></ul>
             <p id="debriefRecap" class="debrief-recap muted"></p>
           </div>

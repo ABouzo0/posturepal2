@@ -132,7 +132,7 @@ async function addPhotonUser(user: Pick<User, "firstName" | "lastName" | "email"
       "spectrum", "users", "add",
       "--first-name", user.firstName,
       "--last-name", user.lastName,
-      "--email", user.email,
+      ...(user.email ? ["--email", user.email] : []),
       "--phone", user.phone,
       "--project", PROJECT_ID,
       "--json",
@@ -363,10 +363,9 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
   if (url.pathname === "/api/signup") {
     const firstName = String(body.firstName || "").trim();
     const lastName = String(body.lastName || "").trim();
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = "";
     const phone = normalizePhone(String(body.phone || ""));
     if (!firstName || !lastName) return sendJson(response, { error: "Enter your first and last name." }, 400, headers);
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return sendJson(response, { error: "Enter a valid email." }, 400, headers);
     if (!phone) return sendJson(response, { error: "Enter a valid phone number." }, 400, headers);
     if (body.consent !== true) return sendJson(response, { error: "Consent is required for iMessage alerts." }, 400, headers);
     const existing = users.find((user) => user.phone === phone);
