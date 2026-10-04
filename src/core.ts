@@ -23,14 +23,6 @@ export function normalizePhone(raw: string): string | null {
   return null;
 }
 
-/** Synthetic address when the signup form omits email (DB and Photon still require a value). */
-export function signupEmailForPhone(phone: string, provided?: unknown): string {
-  const trimmed = String(provided ?? "").trim().toLowerCase();
-  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return trimmed;
-  const digits = phone.replace(/\D/g, "") || crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-  return `pp+${digits}@users.posturepal.app`;
-}
-
 export function emptyStats(): Stats {
   return { goodSeconds: 0, badSeconds: 0, awaySeconds: 0, alerts: 0, issueCounts: {} };
 }

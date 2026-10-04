@@ -7,11 +7,8 @@
   --line: #2a2e38;
   --muted: #8b93a7;
   --text: #e8ecf4;
-  --accent: #e0b15a;
-  --accent-dim: rgba(224, 177, 90, 0.16);
-  --accent-glow: rgba(224, 177, 90, 0.12);
-  --accent-line: rgba(224, 177, 90, 0.45);
-  --accent-soft: rgba(224, 177, 90, 0.35);
+  --accent: #22d3ee;
+  --accent-dim: rgba(34, 211, 238, 0.14);
   --good: #4ade80;
   --alert: #f87171;
   --space-1: 8px;
@@ -51,8 +48,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 50% at 70% -10%, var(--accent-glow), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 10% 100%, rgba(224, 177, 90, 0.06), transparent 50%);
+    radial-gradient(ellipse 80% 50% at 70% -10%, rgba(34, 211, 238, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 10% 100%, rgba(34, 211, 238, 0.06), transparent 50%);
   z-index: 0;
 }
 
@@ -195,7 +192,7 @@ h2 {
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--graphite);
-  box-shadow: 0 0 0 1px rgba(224, 177, 90, 0.1), 0 var(--space-4) var(--space-7) rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08), 0 var(--space-4) var(--space-7) rgba(0, 0, 0, 0.55);
 }
 
 .browser-stage {
@@ -216,8 +213,8 @@ h2 {
     0deg,
     transparent,
     transparent 3px,
-    rgba(224, 177, 90, 0.04) 3px,
-    rgba(224, 177, 90, 0.04) 4px
+    rgba(34, 211, 238, 0.03) 3px,
+    rgba(34, 211, 238, 0.03) 4px
   );
   pointer-events: none;
   animation: pulse-dot 4s ease-in-out infinite;
@@ -249,7 +246,7 @@ h2 {
 }
 
 .loop-card:hover {
-  border-color: var(--accent-line);
+  border-color: rgba(34, 211, 238, 0.45);
   transform: translateY(-2px);
 }
 
@@ -361,8 +358,8 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: #ecc98a;
-  border-color: #ecc98a;
+  background: #67e8f9;
+  border-color: #67e8f9;
   color: var(--black);
 }
 
@@ -435,7 +432,7 @@ button.primary:hover:not(:disabled) {
   margin-bottom: var(--space-2);
   padding: var(--space-2) var(--space-3);
   background: var(--accent-dim);
-  border: 1px solid var(--accent-soft);
+  border: 1px solid rgba(34, 211, 238, 0.35);
   border-radius: var(--radius);
 }
 
@@ -596,7 +593,7 @@ output {
 .debrief-panel {
   margin-top: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid var(--accent-soft);
+  border: 1px solid rgba(34, 211, 238, 0.35);
   border-radius: var(--radius);
   background: var(--graphite);
   animation: rise 280ms var(--ease) both;
