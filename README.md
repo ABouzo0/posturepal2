@@ -58,7 +58,7 @@ This implementation intentionally uses Photon's managed cloud provider, as docum
      --project "$SPECTRUM_PROJECT_ID" --json
    ```
 
-   To run this automatically at signup, install and authenticate the Photon CLI in the host, then set `PHOTON_REGISTER_USERS=true`. Dashboard-managed users are safer for the default deployment.
+   Signup now does this automatically through the Spectrum API (`POST /projects/{projectId}/users/`, authenticated with the project ID and secret), so no CLI is needed. Users are added as `shared` unless `PHOTON_ASSIGNED_LINE` names your dedicated line. Set `PHOTON_REGISTER_USERS=false` to manage users only in the dashboard. Note that anyone who submits the signup form gets added, so keep an eye on the project's user count.
 4. The recipient must reply `hi` to the welcome iMessage once. PosturePal then marks the number active. Supported replies are `status`, `snooze 15`, `resume`, `stop`, and `unsubscribe`.
 
 Photon credentials and access to the project/line are user-owned actions and cannot be completed from this repository.
