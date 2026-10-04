@@ -33,7 +33,14 @@ const PROJECT_ID = process.env.SPECTRUM_PROJECT_ID || process.env.PROJECT_ID || 
 const PROJECT_SECRET = process.env.SPECTRUM_PROJECT_SECRET || process.env.PROJECT_SECRET || "";
 const WEBHOOK_SECRET = process.env.SPECTRUM_WEBHOOK_SECRET || "";
 const INBOUND_MODE = process.env.PHOTON_INBOUND_MODE || "stream";
-const COOLDOWN_MS = Number(process.env.ALERT_COOLDOWN_MINUTES || 10) * 60_000;
+const COOLDOWN_MS = Number(process.env.ALERT_COOLDOWN_MINUTES || 1) * 60_000;
+const ELEVENLABS_VOICE_SETTINGS = {
+  stability: 0.32,
+  similarityBoost: 0.72,
+  style: 0.68,
+  useSpeakerBoost: true,
+  speed: 1.05,
+};
 const DEFAULT_SLOUCH_SECONDS = normalizeSlouchSeconds(process.env.DEFAULT_SLOUCH_SECONDS, 30);
 const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
@@ -300,21 +307,24 @@ function mergeStats(state: LiveState, incoming: Partial<Stats> | undefined) {
   };
 }
 
-async function createAudio(message: string, voiceId: string): Promise<string | null> {
-  if (!elevenlabs) return null;
+async function createAudio(message: string, voiceId: string): Promise<{ url: string | null; error?: string }> {
+  if (!elevenlabs) return { url: null, error: "elevenlabs-not-configured" };
   try {
     const stream = await elevenlabs.textToSpeech.convert(allowedVoice(voiceId), {
       text: message,
       modelId: ELEVENLABS_MODEL_ID,
       outputFormat: "mp3_44100_128",
+      voiceSettings: ELEVENLABS_VOICE_SETTINGS,
     });
     const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    if (!bytes.byteLength) return { url: null, error: "elevenlabs-empty-audio" };
     const token = crypto.randomUUID();
     audioCache.set(token, { bytes, expiresAt: Date.now() + 2 * 60_000 });
-    return `/api/audio/${token}`;
+    return { url: `/api/audio/${token}` };
   } catch (error) {
-    console.error("ElevenLabs generation failed; browser speech fallback will be used.", error);
-    return null;
+    const detail = String((error as Error).message || error).slice(0, 240);
+    console.error("ElevenLabs generation failed; browser speech fallback will be used.", detail);
+    return { url: null, error: "elevenlabs-generation-failed" };
   }
 }
 
@@ -396,8 +406,10 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
   if (request.method === "GET" && url.pathname.startsWith("/api/audio/")) {
     const token = url.pathname.slice("/api/audio/".length);
     const audio = audioCache.get(token);
-    audioCache.delete(token);
-    if (!audio || audio.expiresAt < Date.now()) return sendJson(response, { error: "audio expired" }, 404, headers);
+    if (!audio || audio.expiresAt < Date.now()) {
+      audioCache.delete(token);
+      return sendJson(response, { error: "audio expired" }, 404, headers);
+    }
     response.writeHead(200, { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", ...headers });
     return response.end(audio.bytes);
   }
@@ -509,9 +521,15 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
       if (!decision.allowed) return sendJson(response, { sent: false, reason: decision.reason }, 200, headers);
     }
     const history = await store.demoStats(user.id);
-    const message = body.test
-      ? `Test successful, ${user.firstName}. PosturePal alerts are ready.`
-      : await personalizedNudge({ user, issue, seconds, current: state.stats, history });
+    let message: string;
+    let generatedBy: "gemini" | "template" = "template";
+    if (body.test) {
+      message = `Test successful, ${user.firstName}. PosturePal alerts are ready.`;
+    } else {
+      const nudge = await personalizedNudge({ user, issue, seconds, current: state.stats, history });
+      message = nudge.message;
+      generatedBy = nudge.generatedBy;
+    }
     const delivery = await sendTo(user, message);
     if (!body.test) {
       state.lastAlertAt = Date.now();
@@ -528,16 +546,17 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
       };
       await store.recordSlouchEvent(event);
     }
-    const audioUrl = await createAudio(message, state.voiceId);
+    const audio = await createAudio(message, state.voiceId);
     return sendJson(response, {
       sent: delivery.delivered,
       delivered: delivery.delivered,
       channel: delivery.channel,
       reason: delivery.delivered ? undefined : delivery.reason,
       message,
-      audioUrl,
-      audioProvider: audioUrl ? "elevenlabs" : "browser",
-      generatedBy: process.env.GEMINI_API_KEY && !body.test ? "gemini" : "template",
+      audioUrl: audio.url,
+      audioProvider: audio.url ? "elevenlabs" : "browser",
+      audioError: audio.error,
+      generatedBy: body.test ? "template" : generatedBy,
     }, 200, headers);
   }
   if (url.pathname === "/api/session/stop") {
@@ -546,7 +565,7 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     const endedAt = new Date().toISOString();
     const topIssue = Object.entries(state.stats.issueCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     const history = await store.demoStats(user.id);
-    const recap = await sessionRecap({
+    const recapCopy = await sessionRecap({
       user,
       minutes: Math.max(1, Math.round((Date.now() - state.sessionStart) / 60_000)),
       goodPct: goodPercent(state.stats),
@@ -564,15 +583,24 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
       alerts: state.stats.alerts,
       topIssue,
       stats: state.stats,
-      recap,
+      recap: recapCopy.message,
     };
     await store.saveSession(session);
-    const delivery = await sendTo(user, recap);
-    const audioUrl = await createAudio(recap, state.voiceId);
+    const delivery = await sendTo(user, recapCopy.message);
+    const audio = await createAudio(recapCopy.message, state.voiceId);
     state.active = false;
     state.stopRequested = false;
     state.sessionId = null;
-    return sendJson(response, { ok: true, session, recap, delivery, audioUrl, audioProvider: audioUrl ? "elevenlabs" : "browser" }, 200, headers);
+    return sendJson(response, {
+      ok: true,
+      session,
+      recap: recapCopy.message,
+      delivery,
+      audioUrl: audio.url,
+      audioProvider: audio.url ? "elevenlabs" : "browser",
+      audioError: audio.error,
+      generatedBy: recapCopy.generatedBy,
+    }, 200, headers);
   }
   return sendJson(response, { error: "not found" }, 404, headers);
 }

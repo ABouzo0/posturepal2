@@ -186,10 +186,40 @@ function track(raw, delta) {
 async function speak(result) {
   if (!$("audioEnabled").checked || !result.message) return;
   if (result.audioUrl) {
-    try { await new Audio(result.audioUrl).play(); return; } catch {}
+    try {
+      await playAlertAudio(result.audioUrl);
+      return;
+    } catch (error) {
+      console.warn("ElevenLabs playback failed; falling back to browser speech.", error);
+    }
   }
   speechSynthesis.cancel();
-  speechSynthesis.speak(new SpeechSynthesisUtterance(result.message));
+  const utterance = new SpeechSynthesisUtterance(result.message);
+  utterance.rate = 1.05;
+  utterance.volume = 1;
+  speechSynthesis.speak(utterance);
+}
+
+let audioContext;
+async function playAlertAudio(relativeUrl) {
+  const response = await fetch(new URL(relativeUrl, location.origin).href, { cache: "no-store" });
+  if (!response.ok) throw new Error(`audio HTTP ${response.status}`);
+  const buffer = await response.arrayBuffer();
+  if (!buffer.byteLength) throw new Error("audio empty");
+  audioContext ??= new AudioContext();
+  if (audioContext.state === "suspended") await audioContext.resume();
+  const decoded = await audioContext.decodeAudioData(buffer.slice(0));
+  const source = audioContext.createBufferSource();
+  const gain = audioContext.createGain();
+  gain.gain.value = 1.85;
+  source.buffer = decoded;
+  source.connect(gain);
+  gain.connect(audioContext.destination);
+  await new Promise((resolve, reject) => {
+    source.onended = resolve;
+    source.onerror = reject;
+    source.start(0);
+  });
 }
 async function alertUser(issue, seconds) {
   try {
