@@ -7,15 +7,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { parseAgentCommand } from "./agent.js";
-import {
-  buildSessionDebrief,
-  conversationalReply,
-  finalizeCoachReply,
-  personalizedNudge,
-  sessionRecap,
-  VOICES,
-  whyReply,
-} from "./coach.js";
+import { buildSessionDebrief, conversationalReply, exerciseFallback, isExerciseQuestion, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
 import {
   canSendAlert,
   emptyStats,
@@ -50,7 +42,6 @@ const ELEVENLABS_VOICE_SETTINGS = {
   speed: 1.05,
 };
 const DEFAULT_SLOUCH_SECONDS = normalizeSlouchSeconds(process.env.DEFAULT_SLOUCH_SECONDS, 30);
-const STREAM_BOOT_DELAY_MS = Number(process.env.PHOTON_STREAM_BOOT_DELAY_MS || 4000);
 const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
@@ -143,9 +134,7 @@ async function addPhotonUser(user: Pick<User, "firstName" | "lastName" | "email"
 }
 
 let connection: any = null;
-
-async function initPhoton() {
-  if (connection || !PROJECT_ID || !PROJECT_SECRET) return;
+if (PROJECT_ID && PROJECT_SECRET) {
   try {
     const app = await Spectrum({
       projectId: PROJECT_ID,
@@ -158,16 +147,7 @@ async function initPhoton() {
   } catch (error) {
     console.error("Photon connection failed; using terminal fallback.", error);
   }
-}
-
-function startInboundStream() {
-  if (!connection || INBOUND_MODE !== "stream") return;
-  void (async () => {
-    for await (const [space, message] of connection.app.messages) await processInbound(space, message);
-  })().catch((error) => console.error("Photon inbound stream stopped.", error));
-}
-
-if (!PROJECT_ID || !PROJECT_SECRET) {
+} else {
   console.warn("Photon credentials absent; iMessage notifications will print to the terminal.");
 }
 
@@ -269,9 +249,7 @@ async function handleText(user: User, raw: string): Promise<string> {
       break;
     }
     case "help":
-      answer = finalizeCoachReply("Controls: stats · why · snooze 20 · stop. Ask me anything else in plain language.", {
-        allowCommands: true,
-      });
+      answer = "Ask me anything about how you sit — exercises, what’s been off, or how a session went. When you need quick controls, text stats, why, snooze 20, or stop.";
       break;
     case "free-text": {
       const [stats, recent, latest] = await Promise.all([
@@ -280,16 +258,13 @@ async function handleText(user: User, raw: string): Promise<string> {
         store.latestSlouchEvent(user.id),
       ]);
       answer = await conversationalReply({ user, message: command.text, stats, recent, lastIssue: latest?.issue || null });
+      if (isExerciseQuestion(command.text) && answer.length < 100) {
+        answer = exerciseFallback({ stats, lastIssue: latest?.issue || stats.topIssue });
+      }
       break;
     }
   }
-  if (command.type === "stats") {
-    return finalizeCoachReply(answer, { allowLong: true, allowCommands: true });
-  }
-  if (command.type === "help") {
-    return answer;
-  }
-  return finalizeCoachReply(answer);
+  return answer;
 }
 
 async function processInbound(space: any, message: any) {
@@ -318,12 +293,10 @@ async function processInbound(space: any, message: any) {
   console.log(`Photon inbound reply: ${delivery.delivered ? "sent" : delivery.reason}`);
 }
 
-async function bootPhotonInbound() {
-  await initPhoton();
-  if (INBOUND_MODE === "stream" && STREAM_BOOT_DELAY_MS > 0) {
-    await new Promise((resolve) => setTimeout(resolve, STREAM_BOOT_DELAY_MS));
-  }
-  startInboundStream();
+if (connection && INBOUND_MODE === "stream") {
+  void (async () => {
+    for await (const [space, message] of connection.app.messages) await processInbound(space, message);
+  })().catch((error) => console.error("Photon inbound stream stopped.", error));
 }
 
 function mergeStats(state: LiveState, incoming: Partial<Stats> | undefined) {
@@ -665,10 +638,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`PosturePal hackathon core running at http://${HOST}:${PORT}`);
-  void bootPhotonInbound().catch((error) => console.error("Photon inbound bootstrap failed.", error));
-});
+server.listen(PORT, HOST, () => console.log(`PosturePal hackathon core running at http://${HOST}:${PORT}`));
 
 async function shutdown() {
   server.close();
