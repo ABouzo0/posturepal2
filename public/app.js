@@ -45,10 +45,16 @@ function showView() {
   $("tracker").classList.toggle("hidden", !signedIn);
   $("hello").classList.toggle("hidden", !signedIn);
   $("signOutBtn").classList.toggle("hidden", !signedIn);
+  document.querySelectorAll(".launch-panel").forEach((node) => {
+    if (node.id === "signup") return;
+    node.classList.toggle("hidden", signedIn);
+  });
+  document.querySelector(".ghost-link")?.classList.toggle("hidden", signedIn);
   if (signedIn) {
     $("hello").textContent = `Hi, ${user.firstName}`;
     setActivated(user.activated);
     $("calibInfo").textContent = baseline ? `Calibrated ${new Date(baseline.calibratedAt).toLocaleString()}` : "Your first session begins with a quick calibration.";
+    $("tracker").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 function setActivated(active) {
@@ -344,5 +350,85 @@ $("audioEnabled").onchange = saveSettings;
 $("slouchSeconds").value = localStorage.getItem("posturepal.slouchSeconds") || "30";
 $("slouchSeconds").oninput();
 window.addEventListener("beforeunload", () => mode === "tracking" && navigator.sendBeacon("/api/session/stop", JSON.stringify({ userId: user.id, stats: roundedStats() })));
+
+function initHeroCanvas() {
+  const canvas = document.getElementById("heroCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  let frame = 0;
+  const joints = [
+    [0.5, 0.16], [0.5, 0.28], [0.38, 0.34], [0.62, 0.34], [0.32, 0.48], [0.68, 0.48],
+    [0.28, 0.62], [0.72, 0.62], [0.42, 0.52], [0.58, 0.52], [0.46, 0.78], [0.54, 0.78],
+    [0.44, 0.94], [0.56, 0.94],
+  ];
+  const edges = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [2, 8], [3, 9], [8, 10], [9, 11], [10, 12], [11, 13], [8, 9]];
+  const draw = () => {
+    frame += 1;
+    const wobble = Math.sin(frame * 0.04) * 0.012;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#060708";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < canvas.height; y += 12) {
+      for (let x = 0; x < canvas.width; x += 12) {
+        ctx.fillStyle = "rgba(34,211,238,0.04)";
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    const points = joints.map(([x, y], index) => {
+      const slump = index < 4 ? wobble * 2.5 : wobble;
+      return { x: (x + slump) * canvas.width, y: (y + slump * 0.4) * canvas.height };
+    });
+    ctx.strokeStyle = "rgba(34,211,238,0.55)";
+    ctx.lineWidth = 1;
+    edges.forEach(([a, b]) => {
+      ctx.beginPath();
+      ctx.moveTo(points[a].x, points[a].y);
+      ctx.lineTo(points[b].x, points[b].y);
+      ctx.stroke();
+    });
+    points.forEach((point, index) => {
+      ctx.beginPath();
+      ctx.fillStyle = index === 0 ? "#22d3ee" : "rgba(74,222,128,0.85)";
+      ctx.arc(point.x, point.y, index === 0 ? 4 : 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  };
+  draw();
+}
+
+function initAlignmentDemo() {
+  const slider = document.getElementById("alignmentDemo");
+  const board = document.getElementById("demoDashboard");
+  if (!slider || !board) return;
+  const upright = document.getElementById("demoUpright");
+  const slouch = document.getElementById("demoSlouch");
+  const nudges = document.getElementById("demoNudges");
+  const trend = document.getElementById("demoTrend");
+  const statusLabel = document.getElementById("demoStatusLabel");
+  const statusPct = document.getElementById("demoStatusPct");
+  const message = document.getElementById("demoMessage");
+  const paint = () => {
+    const value = Number(slider.value);
+    const aligned = value >= 72;
+    board.classList.toggle("slouched", !aligned);
+    board.classList.toggle("aligned", aligned);
+    const pct = Math.round(52 + value * 0.45);
+    upright.textContent = `${pct}%`;
+    slouch.textContent = aligned ? "0s" : `${Math.max(8, Math.round((100 - value) * 0.5))}s`;
+    nudges.textContent = aligned ? "0" : String(Math.max(1, Math.round((100 - value) / 30)));
+    trend.textContent = aligned ? "+6%" : "−4%";
+    statusPct.textContent = `${pct}% upright`;
+    statusLabel.textContent = aligned ? "Calm · aligned" : "Alert · sustained slouch";
+    message.textContent = aligned ? "Session steady · debrief ready when you stop" : "iMessage queued · voice nudge primed";
+    document.querySelectorAll(".demo-metric")[0]?.classList.toggle("alert", !aligned);
+  };
+  slider.addEventListener("input", paint);
+  paint();
+}
+
+initHeroCanvas();
+initAlignmentDemo();
 showView();
 verifyUser();

@@ -3,32 +3,95 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Private, real-time posture coaching with voice and iMessage alerts." />
-    <title>PosturePal — real-time posture coaching</title>
+    <meta name="description" content="Good posture, automated — on-device camera, iMessage nudges, session debriefs." />
+    <title>PosturePal — Good posture, automated.</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <header>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
       <a class="brand" href="/">Posture<span>Pal</span></a>
       <div class="header-actions">
         <span id="hello" class="muted hidden"></span>
+        <a class="ghost-link launch-panel" href="#signup">Get started</a>
         <button id="signOutBtn" class="text-button hidden">Sign out</button>
       </div>
     </header>
 
     <main>
-      <section class="hero">
-        <p class="eyebrow">Private by design</p>
-        <h1>Sit better.<br /><em>Feel better.</em></h1>
-        <p class="lede">PosturePal watches your posture on-device and nudges you only after a sustained slouch. No video ever leaves your browser.</p>
+      <section class="launch-panel hero cinematic">
+        <div class="hero-copy">
+          <p class="eyebrow">On-device · iMessage · Voice</p>
+          <h1>Good posture, automated.</h1>
+          <p class="lede">
+            One browser camera flags a sustained slouch, pings iMessage, and summarizes the session — video never leaves your device.
+          </p>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="browser-frame">
+            <div class="browser-chrome">
+              <span></span><span></span><span></span>
+              <p>posturepal — live webcam</p>
+            </div>
+            <div class="browser-stage">
+              <canvas id="heroCanvas" width="480" height="320"></canvas>
+              <div class="scanline"></div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section id="signup" class="card signup-card">
+      <section class="launch-panel loop" aria-label="How PosturePal works">
+        <div class="loop-track">
+          <article class="loop-card">
+            <p class="step">01</p>
+            <h2>The Watchful Eye</h2>
+            <p>MediaPipe reads joints in your browser. No frames uploaded, no cloud storage — just live geometry.</p>
+          </article>
+          <article class="loop-card">
+            <p class="step">02</p>
+            <h2>The Whisper</h2>
+            <p>After your chosen slouch window, Photon sends an iMessage while ElevenLabs speaks the same nudge on-device.</p>
+          </article>
+          <article class="loop-card">
+            <p class="step">03</p>
+            <h2>The De-Brief</h2>
+            <p>End-of-session recap: alignment percentage, slouch breakdown, and how today compares to your history.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="launch-panel demo-section" aria-label="Alignment preview">
+        <div class="demo-head">
+          <h2>From slouch to alignment</h2>
+          <p class="muted">Drag the slider — this mock dashboard mirrors what your session stats feel like in motion.</p>
+        </div>
+        <label class="alignment-label" for="alignmentDemo">
+          <span>Slouched</span>
+          <input id="alignmentDemo" type="range" min="0" max="100" value="18" />
+          <span>Perfect alignment</span>
+        </label>
+        <div id="demoDashboard" class="demo-dashboard slouched">
+          <div class="demo-status">
+            <span id="demoStatusLabel">Alert · sustained slouch</span>
+            <span id="demoStatusPct">62% upright</span>
+          </div>
+          <div class="demo-grid">
+            <div class="demo-metric alert"><strong id="demoUpright">62%</strong><span>alignment</span></div>
+            <div class="demo-metric"><strong id="demoSlouch">38s</strong><span>slouch streak</span></div>
+            <div class="demo-metric"><strong id="demoNudges">2</strong><span>nudges sent</span></div>
+            <div class="demo-metric"><strong id="demoTrend">−4%</strong><span>vs last session</span></div>
+          </div>
+          <p id="demoMessage" class="demo-message">iMessage queued · voice nudge primed</p>
+        </div>
+      </section>
+
+      <section id="signup" class="card signup-card launch-panel">
         <div>
-          <p class="step">01</p>
-          <h2>Set up your coach</h2>
-          <p class="muted">Photon only texts numbers allowed in the project. Setup takes two quick replies:</p>
+          <p class="step">Setup</p>
+          <h2>Activate your coach</h2>
+          <p class="muted">Photon only texts allow-listed numbers. Two quick replies and you are live:</p>
           <ol class="onboarding">
             <li><strong>Join the allow-list.</strong> Ask the demo owner to add this exact iMessage number in Photon.</li>
             <li><strong>Reply “hi”.</strong> We send a verification iMessage. Your reply activates two-way coaching.</li>
@@ -65,7 +128,7 @@
         </div>
 
         <aside class="controls card">
-          <p class="step">02</p>
+          <p class="step">Session</p>
           <h2>Choose your nudge</h2>
           <label>Sustained slouch time
             <div class="range-row"><input id="slouchSeconds" type="range" min="5" max="120" step="5" value="30" /><output id="slouchOutput">30 sec</output></div>
