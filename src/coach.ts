@@ -130,6 +130,20 @@ async function generate(prompt: string, fallback: string, maxOutputTokens = 220)
   return { message: fallback, generatedBy: "template" };
 }
 
+function nudgeLooksComplete(message: string): boolean {
+  const words = message.split(/\s+/).filter(Boolean);
+  return words.length >= 18 && message.length >= 90;
+}
+
+function recapLooksComplete(message: string, debrief: SessionDebrief): boolean {
+  if (message.length < 120) return false;
+  if (!message.includes(String(debrief.minutes))) return false;
+  if (!message.includes(String(debrief.nudges))) return false;
+  if (!message.includes(String(debrief.uprightPct))) return false;
+  if (debrief.comparison === "first_session") return /first/i.test(message);
+  return debrief.lifetimeUprightPct !== null && message.includes(String(debrief.lifetimeUprightPct));
+}
+
 export async function personalizedNudge(input: {
   user: User;
   issue: string;
@@ -139,7 +153,7 @@ export async function personalizedNudge(input: {
 }): Promise<GeneratedCopy> {
   const fallback = templateNudge(input.user, input.issue);
   const label = issueLabel(input.issue);
-  return generate(
+  const result = await generate(
     `You are PosturePal, an energetic posture coach speaking to ${input.user.firstName} mid-session (this will be read aloud).
 Write exactly TWO sentences (about 35–55 words total). Sentence 1: name what is wrong (${label}) and tell them to sit up tall. Sentence 2: one clear physical cue and a motivational close.
 Be warm, loud-in-spirit, and specific — not a one-liner. No hashtags, guilt, diagnosis, or mention of cameras/AI.
@@ -148,6 +162,10 @@ Lifetime context: ${input.history.sessions} saved sessions, ${input.history.upri
     fallback,
     220,
   );
+  if (result.generatedBy === "gemini" && !nudgeLooksComplete(result.message)) {
+    return { message: fallback, generatedBy: "template" };
+  }
+  return result;
 }
 
 export async function sessionRecap(input: {
@@ -161,7 +179,7 @@ export async function sessionRecap(input: {
     : input.debrief.comparison === "equal"
       ? `Say their ${input.debrief.uprightPct}% upright matches their lifetime average of ${input.debrief.lifetimeUprightPct}%.`
       : `Say their ${input.debrief.uprightPct}% upright is ${input.debrief.deltaPct} points ${input.debrief.comparison} than their lifetime average of ${input.debrief.lifetimeUprightPct}%.`;
-  return generate(
+  const result = await generate(
     `You are PosturePal giving ${input.user.firstName} a spoken end-of-session debrief (two or three sentences, under 70 words).
 MUST include ALL of these exact facts: ${input.debrief.minutes} minutes, ${input.debrief.nudges} nudges, ${input.debrief.uprightPct}% upright this session.
 ${comparisonLine}
@@ -170,6 +188,10 @@ Sound upbeat and proud. Do not invent numbers.`,
     fallback,
     280,
   );
+  if (result.generatedBy === "gemini" && !recapLooksComplete(result.message, input.debrief)) {
+    return { message: fallback, generatedBy: "template" };
+  }
+  return result;
 }
 
 export async function conversationalReply(input: {
