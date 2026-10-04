@@ -7,7 +7,7 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { parseAgentCommand } from "./agent.js";
-import { buildSessionDebrief, conversationalReply, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
+import { buildSessionDebrief, conversationalReply, exerciseFallback, isExerciseQuestion, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
 import {
   canSendAlert,
   emptyStats,
@@ -258,6 +258,9 @@ async function handleText(user: User, raw: string): Promise<string> {
         store.latestSlouchEvent(user.id),
       ]);
       answer = await conversationalReply({ user, message: command.text, stats, recent, lastIssue: latest?.issue || null });
+      if (isExerciseQuestion(command.text) && answer.length < 100) {
+        answer = exerciseFallback({ stats, lastIssue: latest?.issue || stats.topIssue });
+      }
       break;
     }
   }
