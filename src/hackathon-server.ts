@@ -193,8 +193,8 @@ async function sendWelcome(user: User, returning: boolean): Promise<DeliveryResu
   return sendTo(
     user,
     returning
-      ? `Welcome back, ${user.firstName}! Reply “hi” to verify your number. Try: stats · snooze 20 · why · stop.`
-      : `Hi ${user.firstName}! Reply “hi” to activate PosturePal. Then try: stats · snooze 20 · why · stop.`,
+      ? `Welcome back! Reply “hi” to verify your number, then ask any posture question in plain language.`
+      : `Reply “hi” to activate PosturePal. Then ask how you sit, request desk exercises, or check in anytime.`,
   );
 }
 
@@ -249,7 +249,7 @@ async function handleText(user: User, raw: string): Promise<string> {
       break;
     }
     case "help":
-      answer = "Try: stats · snooze 20 · why · stop · unsubscribe. Or ask a posture question in your own words.";
+      answer = "Ask me anything about how you sit — exercises, what’s been off, or how a session went. When you need quick controls, text stats, why, snooze 20, or stop.";
       break;
     case "free-text": {
       const [stats, recent, latest] = await Promise.all([
