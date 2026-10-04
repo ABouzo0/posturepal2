@@ -50,6 +50,7 @@ const ELEVENLABS_VOICE_SETTINGS = {
   speed: 1.05,
 };
 const DEFAULT_SLOUCH_SECONDS = normalizeSlouchSeconds(process.env.DEFAULT_SLOUCH_SECONDS, 30);
+const STREAM_BOOT_DELAY_MS = Number(process.env.PHOTON_STREAM_BOOT_DELAY_MS || 4000);
 const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
@@ -142,7 +143,9 @@ async function addPhotonUser(user: Pick<User, "firstName" | "lastName" | "email"
 }
 
 let connection: any = null;
-if (PROJECT_ID && PROJECT_SECRET) {
+
+async function initPhoton() {
+  if (connection || !PROJECT_ID || !PROJECT_SECRET) return;
   try {
     const app = await Spectrum({
       projectId: PROJECT_ID,
@@ -155,7 +158,16 @@ if (PROJECT_ID && PROJECT_SECRET) {
   } catch (error) {
     console.error("Photon connection failed; using terminal fallback.", error);
   }
-} else {
+}
+
+function startInboundStream() {
+  if (!connection || INBOUND_MODE !== "stream") return;
+  void (async () => {
+    for await (const [space, message] of connection.app.messages) await processInbound(space, message);
+  })().catch((error) => console.error("Photon inbound stream stopped.", error));
+}
+
+if (!PROJECT_ID || !PROJECT_SECRET) {
   console.warn("Photon credentials absent; iMessage notifications will print to the terminal.");
 }
 
@@ -306,10 +318,12 @@ async function processInbound(space: any, message: any) {
   console.log(`Photon inbound reply: ${delivery.delivered ? "sent" : delivery.reason}`);
 }
 
-if (connection && INBOUND_MODE === "stream") {
-  void (async () => {
-    for await (const [space, message] of connection.app.messages) await processInbound(space, message);
-  })().catch((error) => console.error("Photon inbound stream stopped.", error));
+async function bootPhotonInbound() {
+  await initPhoton();
+  if (INBOUND_MODE === "stream" && STREAM_BOOT_DELAY_MS > 0) {
+    await new Promise((resolve) => setTimeout(resolve, STREAM_BOOT_DELAY_MS));
+  }
+  startInboundStream();
 }
 
 function mergeStats(state: LiveState, incoming: Partial<Stats> | undefined) {
@@ -651,7 +665,10 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, HOST, () => console.log(`PosturePal hackathon core running at http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => {
+  console.log(`PosturePal hackathon core running at http://${HOST}:${PORT}`);
+  void bootPhotonInbound().catch((error) => console.error("Photon inbound bootstrap failed.", error));
+});
 
 async function shutdown() {
   server.close();
