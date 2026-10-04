@@ -19,25 +19,16 @@
 
     <main>
       <section class="hero">
-        <div class="hero-index" aria-hidden="true">PP<br />/01</div>
-        <div class="hero-copy">
-          <p class="eyebrow">POSTURE TIMER / CAMERA STAYS ON THIS DEVICE</p>
-          <h1>Catch the slump<br /><em>before your neck does.</em></h1>
-          <p class="lede">Set a timer from 5 to 120 seconds. If your head or shoulders drift and stay there, PosturePal plays one voice cue and sends one iMessage.</p>
-        </div>
-        <div class="proof-strip" aria-label="How PosturePal works">
-          <span><b>01</b> Sit upright once to calibrate</span>
-          <span><b>02</b> Camera math runs in your browser</span>
-          <span><b>03</b> No photos or video are uploaded</span>
-        </div>
+        <p class="eyebrow">PRIVATE BY DESIGN · REAL-TIME COACHING</p>
+        <h1>Sit better.<br /><em>Feel better.</em></h1>
+        <p class="lede">PosturePal watches your posture on-device and nudges you only after a sustained slouch. No video ever leaves your browser.</p>
       </section>
 
       <section id="signup" class="card signup-card">
-        <div class="signup-intro">
-          <p class="step">STEP 01 / VERIFY A NUMBER</p>
-          <h2>Tell us where to text.</h2>
-          <p class="muted">We send one verification iMessage now. Reply “hi” once. Tracking only begins after you press Start.</p>
-          <p class="form-note">Already signed up? Use the same phone number. We will send a fresh verification message.</p>
+        <div>
+          <p class="step">01</p>
+          <h2>Set up your coach</h2>
+          <p class="muted">Your number receives private iMessage nudges. Reply “hi” once to activate Photon messaging.</p>
         </div>
         <form id="signupForm">
           <div class="two-col">
@@ -48,7 +39,7 @@
           <label>iMessage phone<input required type="tel" name="phone" placeholder="+1 415 555 0137" autocomplete="tel" /></label>
           <label class="consent"><input required type="checkbox" name="consent" /> I agree to receive automated posture iMessages. Message and data rates may apply. Reply STOP or “unsubscribe” anytime.</label>
           <p id="signupError" class="error hidden"></p>
-          <button id="signupBtn" class="primary" type="submit">Send verification →</button>
+          <button id="signupBtn" class="primary" type="submit">Create my PosturePal</button>
         </form>
       </section>
 
@@ -69,17 +60,17 @@
         </div>
 
         <aside class="controls card">
-          <p class="step">STEP 02 / SET THE TRIPWIRE</p>
-          <h2>How long is too long?</h2>
+          <p class="step">02</p>
+          <h2>Choose your nudge</h2>
           <label>Sustained slouch time
             <div class="range-row"><input id="slouchSeconds" type="range" min="5" max="120" step="5" value="30" /><output id="slouchOutput">30 sec</output></div>
           </label>
           <label>Sensitivity
             <select id="sensitivity"><option value="low">Relaxed</option><option value="medium" selected>Balanced</option><option value="high">Responsive</option></select>
           </label>
-          <label class="toggle"><input id="audioEnabled" type="checkbox" checked /> Play the spoken cue on this device</label>
+          <label class="toggle"><input id="audioEnabled" type="checkbox" checked /> Play voice alert on this device</label>
           <div class="actions">
-            <button id="startBtn" class="primary">Start camera →</button>
+            <button id="startBtn" class="primary">Start posture session</button>
             <button id="stopBtn" disabled>Stop</button>
           </div>
           <div class="actions">
@@ -96,7 +87,7 @@
       </section>
     </main>
 
-    <footer><span>POSTUREPAL / FIELD TOOL 01</span><span>Camera frames stay in this browser.</span></footer>
+    <footer><span>PosturePal</span><span>Camera processing stays on your device.</span></footer>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
