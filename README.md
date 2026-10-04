@@ -12,7 +12,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open <http://localhost:43127> (or set another `PORT`). With no API credentials, signup and the full camera flow still work: data is held in memory, iMessages print to the terminal, coaching uses templates, and audio uses the browser's speech synthesizer.
+Open <http://localhost:43131> (or set another `PORT`). With no API credentials, signup and the full camera flow still work: data is held in memory, iMessages print to the terminal, coaching uses templates, and audio uses the browser's speech synthesizer.
 
 ```bash
 npm test
