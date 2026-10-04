@@ -194,14 +194,17 @@ function showWelcomeDelivery(result) {
   if (!delivery) return flash("Could not verify iMessage delivery status.", 6000);
   if (delivery.status === "sent") {
     $("activateBanner").textContent = "Verification iMessage sent. Reply “hi” to activate posture alerts.";
+    $("activateBanner").classList.toggle("hidden", Boolean(user?.activated));
     return flash(result.returning ? "Welcome-back iMessage sent." : "Verification iMessage sent. Reply “hi” to activate alerts.", 6000);
   }
   if (delivery.status === "pending-allow-list") {
     $("activateBanner").textContent = "This number is pending the Photon project allow-list. Add it there, then sign in again.";
+    $("activateBanner").classList.remove("hidden");
     return flash("iMessage pending: add this number to the Photon project allow-list.", 7000);
   }
   const detail = delivery.detail || deliveryReason(delivery.reason);
   $("activateBanner").textContent = `Verification iMessage failed: ${detail}`;
+  $("activateBanner").classList.remove("hidden");
   flash(`iMessage failed: ${detail}`, 7000);
 }
 async function calibrate() {
