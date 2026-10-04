@@ -7,7 +7,15 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { parseAgentCommand } from "./agent.js";
-import { buildSessionDebrief, conversationalReply, exerciseFallback, isExerciseQuestion, personalizedNudge, sessionRecap, VOICES, whyReply } from "./coach.js";
+import {
+  buildSessionDebrief,
+  conversationalReply,
+  finalizeCoachReply,
+  personalizedNudge,
+  sessionRecap,
+  VOICES,
+  whyReply,
+} from "./coach.js";
 import {
   canSendAlert,
   emptyStats,
@@ -249,7 +257,9 @@ async function handleText(user: User, raw: string): Promise<string> {
       break;
     }
     case "help":
-      answer = "Ask me anything about how you sit — exercises, what’s been off, or how a session went. When you need quick controls, text stats, why, snooze 20, or stop.";
+      answer = finalizeCoachReply("Controls: stats · why · snooze 20 · stop. Ask me anything else in plain language.", {
+        allowCommands: true,
+      });
       break;
     case "free-text": {
       const [stats, recent, latest] = await Promise.all([
@@ -258,13 +268,16 @@ async function handleText(user: User, raw: string): Promise<string> {
         store.latestSlouchEvent(user.id),
       ]);
       answer = await conversationalReply({ user, message: command.text, stats, recent, lastIssue: latest?.issue || null });
-      if (isExerciseQuestion(command.text) && answer.length < 100) {
-        answer = exerciseFallback({ stats, lastIssue: latest?.issue || stats.topIssue });
-      }
       break;
     }
   }
-  return answer;
+  if (command.type === "stats") {
+    return finalizeCoachReply(answer, { allowLong: true, allowCommands: true });
+  }
+  if (command.type === "help") {
+    return answer;
+  }
+  return finalizeCoachReply(answer);
 }
 
 async function processInbound(space: any, message: any) {
