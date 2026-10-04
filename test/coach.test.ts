@@ -24,7 +24,16 @@ test("short social and exercise fallbacks stay iMessage-sized", () => {
   assert.equal(isGreeting("hey"), true);
   assert.equal(isThanks("thanks!"), true);
   const exercise = exerciseFallback({
-    stats: { sessions: 2, totalMinutes: 40, uprightPct: 71, alerts: 3, topIssue: "slouching" },
+    stats: {
+      sessions: 2,
+      totalMinutes: 40,
+      uprightPct: 71,
+      alerts: 3,
+      slouchEvents: 5,
+      currentStreakDays: 1,
+      topIssue: "slouching",
+      lastSessionAt: null,
+    },
     lastIssue: null,
   });
   assert.ok(exercise.length <= 320);
