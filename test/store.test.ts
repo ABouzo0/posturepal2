@@ -64,7 +64,7 @@ test("memory fallback persists all hackathon entities", async () => {
     uprightPct: 80,
     alerts: 1,
     slouchEvents: 1,
-    currentStreakDays: 0,
+    currentStreakDays: 1,
     topIssue: "slouching",
     lastSessionAt: "2026-10-04T00:10:00.000Z",
   });
