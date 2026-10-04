@@ -12,7 +12,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open <http://localhost:43127>. With no API credentials, signup and the full camera flow still work: iMessages print to the server terminal and audio uses the browser's speech synthesizer.
+Open <http://localhost:43127> (or set another `PORT`). With no API credentials, signup and the full camera flow still work: data is held in memory, iMessages print to the terminal, coaching uses templates, and audio uses the browser's speech synthesizer.
 
 ```bash
 npm test
@@ -35,6 +35,11 @@ All secrets stay on the server. Never add `.env` to git or put these values in `
 | `DATA_DIR` | Yes on Render | Persistent user/session JSON directory |
 | `DEFAULT_SLOUCH_SECONDS` | No | Initial threshold, constrained to 5–300 seconds |
 | `ALERT_COOLDOWN_MINUTES` | No | Minimum interval between iMessages |
+| `DATABASE_URL` | For Neon | Pooled Neon Postgres runtime URL |
+| `GEMINI_API_KEY` | For personalized coaching | Google AI Studio API key |
+| `GEMINI_MODEL` | No | Defaults to `gemini-2.5-flash` |
+| `PHOTON_INBOUND_MODE` | No | `stream` (default) or `webhook` |
+| `SPECTRUM_WEBHOOK_SECRET` | Webhook mode only | Photon native webhook signing secret |
 
 The browser enforces the selected duration and the server verifies it against the value captured at session start. A three-second upright recovery resets the streak.
 
@@ -57,6 +62,19 @@ This implementation intentionally uses Photon's managed cloud provider, as docum
 4. The recipient must reply `hi` to the welcome iMessage once. PosturePal then marks the number active. Supported replies are `status`, `snooze 15`, `resume`, `stop`, and `unsubscribe`.
 
 Photon credentials and access to the project/line are user-owned actions and cannot be completed from this repository.
+
+### Two-way inbound setup
+
+The default `PHOTON_INBOUND_MODE=stream` follows Spectrum's documented `app.messages` async-iterator pattern. It needs **no Photon dashboard webhook**. Keep one long-running PosturePal process online; incoming iMessages are deduplicated by Spectrum message ID and stored as conversation memory.
+
+For native HTTP delivery instead:
+
+1. Set `PHOTON_INBOUND_MODE=webhook`.
+2. Generate a strong `SPECTRUM_WEBHOOK_SECRET` and set the same value in the app environment.
+3. In Photon, register `https://YOUR_HOST/api/photon/webhook` for the `messages` event with that signing secret.
+4. Do not also run stream mode for the same deployment. Photon webhooks are at-least-once; PosturePal deduplicates message IDs in-process.
+
+Supported commands are `snooze N`, `stats`, `why`, and `stop`. `help`, `subscribe`, and `unsubscribe` are also supported. Other text is answered with Gemini using persisted sessions, settings, last slouch event, and recent conversation. Without `GEMINI_API_KEY`, the same flow returns factual templates.
 
 Every new signup and returning phone-number sign-in attempts a verification iMessage from the managed Photon line. The UI reports one of three transport outcomes:
 
@@ -81,6 +99,41 @@ If Photon is connected but a send fails:
 3. Optionally set `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL_ID`.
 
 The key is never sent to the browser. Generated MP3 data is held in memory behind a one-time, two-minute URL. If generation or playback fails, PosturePal uses the browser's built-in speech synthesis.
+
+Users can choose George, Rachel, or Adam in session settings. The selected ElevenLabs voice is persisted per user. Session stop generates a personalized recap, sends it over iMessage, and returns spoken audio to the browser.
+
+## Neon persistence
+
+Set `DATABASE_URL` to the pooled connection string from Neon:
+
+```env
+DATABASE_URL=postgresql://USER:PASSWORD@ENDPOINT-pooler.REGION.aws.neon.tech/DB?sslmode=require
+```
+
+At startup PosturePal creates the required tables and indexes for users, sessions, slouch events, settings, and conversation memory. For production schema administration, use Neon's direct/unpooled URL in your database tooling. Do not expose either URL to browser code.
+
+When `DATABASE_URL` is absent, PosturePal uses an in-memory implementation of the same storage interface. Every feature works, but data resets when the process restarts.
+
+## Demo stats API
+
+`GET /api/stats?userId=USER_ID` returns aggregate demo-safe numbers without phone or email:
+
+```json
+{
+  "stats": {
+    "sessions": 3,
+    "totalMinutes": 84,
+    "uprightPct": 78,
+    "alerts": 5,
+    "slouchEvents": 5,
+    "currentStreakDays": 2,
+    "topIssue": "head forward",
+    "lastSessionAt": "2026-10-04T12:00:00.000Z"
+  },
+  "active": false,
+  "storage": "postgres"
+}
+```
 
 ## Deploy to posturepal.tech on Render
 

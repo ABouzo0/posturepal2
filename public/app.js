@@ -64,7 +64,27 @@ async function verifyUser() {
   try {
     const result = await post("/api/me");
     if (result.user.activated !== user.activated) setActivated(result.user.activated);
+    applySettings(result.settings);
   } catch {}
+}
+
+function applySettings(settings) {
+  if (!settings) return;
+  $("slouchSeconds").value = String(settings.slouchSeconds);
+  $("slouchSeconds").oninput();
+  $("sensitivity").value = settings.sensitivity;
+  $("voiceId").value = settings.voiceId;
+  $("audioEnabled").checked = settings.audioEnabled;
+}
+
+async function saveSettings() {
+  if (!user) return;
+  await post("/api/settings", {
+    slouchSeconds: Number($("slouchSeconds").value),
+    sensitivity: $("sensitivity").value,
+    voiceId: $("voiceId").value,
+    audioEnabled: $("audioEnabled").checked,
+  }).catch(() => {});
 }
 
 async function initializePose() {
@@ -231,7 +251,12 @@ async function start() {
     stats = freshStats(); smooth = null; badStreak = 0; goodStreak = 0; alerted = false; sessionStart = Date.now();
     $("alerts").textContent = "0"; mode = "tracking";
     $("stopBtn").disabled = false; $("calibrateBtn").disabled = false;
-    await post("/api/session/start", { slouchSeconds: Number($("slouchSeconds").value) });
+    await post("/api/session/start", {
+      slouchSeconds: Number($("slouchSeconds").value),
+      sensitivity: $("sensitivity").value,
+      voiceId: $("voiceId").value,
+      audioEnabled: $("audioEnabled").checked,
+    });
     heartbeat = setInterval(async () => {
       const result = await post("/api/heartbeat", { stats: roundedStats() }).catch(() => ({}));
       if (result.stop) void stop();
@@ -245,7 +270,13 @@ async function stop(report = true) {
   const tracked = mode === "tracking";
   mode = "idle"; clearInterval(heartbeat); cameraOff(); status("Not tracking");
   $("startBtn").disabled = false; $("stopBtn").disabled = true; $("calibrateBtn").disabled = true;
-  if (report && tracked) await post("/api/session/stop", { stats: roundedStats() }).catch(() => {});
+  if (report && tracked) {
+    const result = await post("/api/session/stop", { stats: roundedStats() }).catch(() => null);
+    if (result?.recap) {
+      flash(`Session recap · ${result.recap}`, 7000);
+      await speak({ message: result.recap, audioUrl: result.audioUrl });
+    }
+  }
 }
 
 $("signupForm").onsubmit = async (event) => {
@@ -257,6 +288,7 @@ $("signupForm").onsubmit = async (event) => {
       phone: form.get("phone"), consent: form.get("consent") === "on",
     });
     user = result.user; saveUser(); showView();
+    applySettings(result.settings);
     showWelcomeDelivery(result);
   } catch (error) {
     $("signupError").textContent = error.message; $("signupError").classList.remove("hidden");
@@ -275,6 +307,10 @@ $("testBtn").onclick = async () => {
   catch (error) { flash(error.message); }
 };
 $("slouchSeconds").oninput = () => { $("slouchOutput").value = `${$("slouchSeconds").value} sec`; localStorage.setItem("posturepal.slouchSeconds", $("slouchSeconds").value); };
+$("slouchSeconds").onchange = saveSettings;
+$("sensitivity").onchange = saveSettings;
+$("voiceId").onchange = saveSettings;
+$("audioEnabled").onchange = saveSettings;
 $("slouchSeconds").value = localStorage.getItem("posturepal.slouchSeconds") || "30";
 $("slouchSeconds").oninput();
 window.addEventListener("beforeunload", () => mode === "tracking" && navigator.sendBeacon("/api/session/stop", JSON.stringify({ userId: user.id, stats: roundedStats() })));

@@ -30,6 +30,10 @@ button.primary { color:white; background:var(--green); border-color:var(--green)
 .text-button { background:transparent; border:0; padding:0; text-decoration:underline; }
 .error { color:var(--red); font-size:13px; margin:0; }
 .muted { color:#617067; }.small { font-size:12px; }.hidden { display:none !important; }
+.onboarding { margin:22px 0 0; padding:0; list-style:none; counter-reset:steps; display:grid; gap:13px; }
+.onboarding li { counter-increment:steps; position:relative; padding-left:34px; color:#46544c; font-size:12px; line-height:1.55; }
+.onboarding li::before { content:counter(steps); position:absolute; left:0; top:1px; width:22px; height:22px; display:grid; place-items:center; border-radius:50%; background:var(--green); color:white; font:10px DM Mono,monospace; }
+.onboarding strong { color:var(--ink); }
 .notice { margin-bottom:18px; padding:14px 18px; background:var(--lime); border-radius:10px; }
 .tracker { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(300px,.8fr); gap:22px; align-items:start; }
 .camera-card { background:#101914; border-radius:18px; overflow:hidden; color:white; position:relative; }
