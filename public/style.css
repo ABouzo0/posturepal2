@@ -25,7 +25,7 @@ input:focus, select:focus { outline:3px solid rgba(169,203,181,.5); border-color
 .consent, .toggle { display:flex; align-items:flex-start; gap:9px; font-size:12px; line-height:1.45; font-weight:400; }
 button { border:1px solid rgba(20,33,27,.25); background:white; padding:12px 16px; border-radius:9px; cursor:pointer; font-weight:600; }
 button:hover:not(:disabled) { transform:translateY(-1px); }
-button:disabled { opacity:.45; cursor:not-allowed; }
+button:disabled { opacity:.42; cursor:not-allowed; filter:grayscale(.65); background:#e7e8e3; border-style:dashed; }
 button.primary { color:white; background:var(--green); border-color:var(--green); }
 .text-button { background:transparent; border:0; padding:0; text-decoration:underline; }
 .error { color:var(--red); font-size:13px; margin:0; }

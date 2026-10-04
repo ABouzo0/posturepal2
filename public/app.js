@@ -174,11 +174,20 @@ async function speak(result) {
 async function alertUser(issue, seconds) {
   try {
     const result = await post("/api/alert", { issue, seconds });
-    if (!result.sent) return flash(`Alert paused: ${result.reason}`);
-    $("alerts").textContent = String(Number($("alerts").textContent) + 1);
-    flash(`Nudge sent · ${result.message}`);
     await speak(result);
+    if (!result.sent) return flash(`Voice alert played; iMessage not sent: ${deliveryReason(result.reason)}`, 6000);
+    $("alerts").textContent = String(Number($("alerts").textContent) + 1);
+    flash(`iMessage sent · ${result.message}`);
   } catch (error) { flash(error.message); }
+}
+function deliveryReason(reason) {
+  return {
+    "photon-not-configured": "Photon credentials are not configured",
+    "needs-reply": "reply “hi” to the welcome iMessage first",
+    "not-allowed": "this number is not allowed in the Photon project",
+    "send-error": "Photon rejected the send; check server logs",
+    "unsubscribed": "this number is unsubscribed",
+  }[reason] || reason || "unknown delivery error";
 }
 async function calibrate() {
   mode = "calibrating"; samples = [];
@@ -230,7 +239,7 @@ $("signupForm").onsubmit = async (event) => {
       phone: form.get("phone"), consent: form.get("consent") === "on",
     });
     user = result.user; saveUser(); showView();
-    flash(result.warning || "Check iMessage and reply “hi” to activate alerts.", 6000);
+    flash(result.warning ? deliveryReason(result.warning) : "Check iMessage and reply “hi” to activate alerts.", 6000);
   } catch (error) {
     $("signupError").textContent = error.message; $("signupError").classList.remove("hidden");
   } finally { $("signupBtn").disabled = false; }
@@ -240,7 +249,11 @@ $("startBtn").onclick = start;
 $("stopBtn").onclick = () => stop();
 $("calibrateBtn").onclick = async () => { const previous = mode; if (await calibrate()) smooth = null; mode = previous; };
 $("testBtn").onclick = async () => {
-  try { const result = await post("/api/alert", { test: true }); result.sent ? (flash("Test alert sent."), speak(result)) : flash(`Test failed: ${result.reason}`); }
+  try {
+    const result = await post("/api/alert", { test: true });
+    await speak(result);
+    flash(result.sent ? "Test iMessage sent." : `Voice test played; iMessage not sent: ${deliveryReason(result.reason)}`, 6000);
+  }
   catch (error) { flash(error.message); }
 };
 $("slouchSeconds").oninput = () => { $("slouchOutput").value = `${$("slouchSeconds").value} sec`; localStorage.setItem("posturepal.slouchSeconds", $("slouchSeconds").value); };

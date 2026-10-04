@@ -58,6 +58,16 @@ This implementation intentionally uses Photon's managed cloud provider, as docum
 
 Photon credentials and access to the project/line are user-owned actions and cannot be completed from this repository.
 
+### Delivery diagnostics
+
+`GET /api/health` must report `"photon":"connected"` before the app can send an iMessage. When credentials are absent, PosturePal keeps the voice alert and logs the intended message locally, but the API returns `sent: false`, `channel: "terminal"`, and `reason: "photon-not-configured"`—it never labels a terminal fallback as delivered.
+
+If Photon is connected but a send fails:
+
+- `not-allowed`: add the exact E.164 number to the Photon project's allowed users.
+- `needs-reply`: have that recipient reply `hi` to the welcome iMessage.
+- `send-error`: inspect the server log for the Photon error and confirm the managed line is active.
+
 ## ElevenLabs setup
 
 1. Create an ElevenLabs API key.

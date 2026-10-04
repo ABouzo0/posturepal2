@@ -162,11 +162,15 @@ if (PROJECT_ID && PROJECT_SECRET) {
   console.warn("Photon credentials absent; iMessage notifications will print to the terminal.");
 }
 
-async function sendTo(user: User, message: string): Promise<{ ok: boolean; reason?: string }> {
-  if (user.optedOut) return { ok: false, reason: "unsubscribed" };
+type DeliveryResult =
+  | { delivered: true; channel: "imessage" }
+  | { delivered: false; channel: "terminal" | "imessage"; reason: string };
+
+async function sendTo(user: User, message: string): Promise<DeliveryResult> {
+  if (user.optedOut) return { delivered: false, channel: "imessage", reason: "unsubscribed" };
   if (!connection) {
     console.log(`[local notification for ${user.phone}] ${message}`);
-    return { ok: true };
+    return { delivered: false, channel: "terminal", reason: "photon-not-configured" };
   }
   try {
     let space = connection.spaces.get(user.id);
@@ -176,14 +180,14 @@ async function sendTo(user: User, message: string): Promise<{ ok: boolean; reaso
       connection.spaces.set(user.id, space);
     }
     await space.send(message);
-    return { ok: true };
+    return { delivered: true, channel: "imessage" };
   } catch (error) {
     const detail = String((error as Error).message || error);
     console.error(`Photon send failed for ${user.phone}: ${detail}`);
     connection.spaces.delete(user.id);
-    if (/new contact|until they respond|RESOURCE_EXHAUSTED/i.test(detail)) return { ok: false, reason: "needs-reply" };
-    if (/target not allowed/i.test(detail)) return { ok: false, reason: "not-allowed" };
-    return { ok: false, reason: "send-error" };
+    if (/new contact|until they respond|RESOURCE_EXHAUSTED/i.test(detail)) return { delivered: false, channel: "imessage", reason: "needs-reply" };
+    if (/target not allowed/i.test(detail)) return { delivered: false, channel: "imessage", reason: "not-allowed" };
+    return { delivered: false, channel: "imessage", reason: "send-error" };
   }
 }
 
@@ -354,8 +358,13 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     };
     users.push(user);
     await saveUsers();
-    await sendTo(user, `Hi ${firstName}! Reply “hi” to activate PosturePal slouch alerts. Reply “unsubscribe” anytime.`);
-    return sendJson(response, { user: publicUser(user), returning: false, warning: registration.warning }, 201, headers);
+    const welcome = await sendTo(user, `Hi ${firstName}! Reply “hi” to activate PosturePal slouch alerts. Reply “unsubscribe” anytime.`);
+    return sendJson(response, {
+      user: publicUser(user),
+      returning: false,
+      delivery: welcome,
+      warning: registration.warning || (!welcome.delivered ? welcome.reason : undefined),
+    }, 201, headers);
   }
 
   const user = users.find((candidate) => candidate.id === body.userId);
@@ -396,14 +405,21 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
       if (!decision.allowed) return sendJson(response, { sent: false, reason: decision.reason }, 200, headers);
     }
     const message = body.test ? `Test successful, ${user.firstName}. PosturePal alerts are ready.` : nudge(issue);
-    const sent = await sendTo(user, message);
-    if (!sent.ok) return sendJson(response, { sent: false, reason: sent.reason }, 200, headers);
-    if (!body.test) {
+    const delivery = await sendTo(user, message);
+    if (!body.test && delivery.delivered) {
       state.lastAlertAt = Date.now();
       state.stats.alerts++;
     }
     const audioUrl = await createAudio(message);
-    return sendJson(response, { sent: true, message, audioUrl, audioProvider: audioUrl ? "elevenlabs" : "browser" }, 200, headers);
+    return sendJson(response, {
+      sent: delivery.delivered,
+      delivered: delivery.delivered,
+      channel: delivery.channel,
+      reason: delivery.delivered ? undefined : delivery.reason,
+      message,
+      audioUrl,
+      audioProvider: audioUrl ? "elevenlabs" : "browser",
+    }, 200, headers);
   }
   if (url.pathname === "/api/session/stop") {
     if (state.active) {
