@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
@@ -31,6 +33,7 @@ import {
   type UserSettings,
 } from "./store.js";
 
+const execFileAsync = promisify(execFile);
 const PORT = Number(process.env.PORT || 43131);
 const HOST = process.env.HOST || "0.0.0.0";
 const PUBLIC_DIR = join(process.cwd(), "public");
@@ -118,39 +121,24 @@ function allowedVoice(voiceId: unknown): string {
   return VOICES.some((voice) => voice.id === candidate) ? candidate : VOICES[0].id;
 }
 
-// Adds the signup to the Photon project's user list (its allow-list) so we can text them.
-// Photon treats a repeat call for the same phone number as an update, so this is safe to rerun.
 async function addPhotonUser(user: Pick<User, "firstName" | "lastName" | "email" | "phone">) {
-  if (process.env.PHOTON_REGISTER_USERS === "false") return { id: null, warning: "automatic Photon registration disabled" };
-  if (!PROJECT_ID || !PROJECT_SECRET) return { id: null, warning: "Photon credentials are missing" };
-  const line = process.env.PHOTON_ASSIGNED_LINE || "";
-  const body = {
-    ...(line ? { type: "dedicated", assignedPhoneNumber: line } : { type: "shared" }),
-    phoneNumber: user.phone,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    ...(user.email ? { email: user.email } : {}),
-  };
+  if (process.env.PHOTON_REGISTER_USERS !== "true") return { id: null, warning: "automatic Photon registration disabled" };
+  if (!PROJECT_ID) return { id: null, warning: "SPECTRUM_PROJECT_ID is missing" };
   try {
-    const response = await fetch(`https://spectrum.photon.codes/projects/${encodeURIComponent(PROJECT_ID)}/users/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${PROJECT_ID}:${PROJECT_SECRET}`).toString("base64")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
-    const result = await response.json().catch(() => ({})) as { data?: { id?: string }; message?: string; error?: string };
-    if (response.ok) return { id: result.data?.id || null };
-    if (response.status === 409) return { id: null };
-    const detail = safePhotonDetail(`${response.status} ${result.message || result.error || JSON.stringify(result)}`, user as User);
-    console.warn(`Photon registration failed: ${detail}`);
-    return { id: null, warning: `Photon registration failed: ${detail}` };
+    const { stdout } = await execFileAsync(process.env.PHOTON_CLI || "photon", [
+      "spectrum", "users", "add",
+      "--first-name", user.firstName,
+      "--last-name", user.lastName,
+      ...(user.email ? ["--email", user.email] : []),
+      "--phone", user.phone,
+      "--project", PROJECT_ID,
+      "--json",
+    ], { env: { ...process.env, PHOTON_NO_UPDATE_NOTIFIER: "1", NO_COLOR: "1" } });
+    return { id: (JSON.parse(stdout) as { id?: string }).id || null };
   } catch (error) {
-    const detail = safePhotonDetail(String((error as Error).message || error), user as User);
-    console.warn(`Photon registration failed: ${detail}`);
-    return { id: null, warning: `Photon registration failed: ${detail}` };
+    const message = String((error as Error).message || error);
+    if (/already|exists|duplicate/i.test(message)) return { id: null };
+    return { id: null, warning: `Photon registration failed: ${message}` };
   }
 }
 
@@ -468,11 +456,6 @@ async function api(request: IncomingMessage, response: ServerResponse, url: URL,
     if (body.consent !== true) return sendJson(response, { error: "Consent is required for iMessage alerts." }, 400, headers);
     const existing = await store.findUserByPhone(phone);
     if (existing) {
-      const registration = await addPhotonUser({ firstName, lastName, email, phone });
-      if (registration.id && !existing.photonUserId) {
-        existing.photonUserId = registration.id;
-        await store.updateUser(existing);
-      }
       const delivery = await sendWelcome(existing, true);
       return sendJson(response, {
         user: publicUser(existing),
